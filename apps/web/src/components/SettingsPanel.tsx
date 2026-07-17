@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { shareWithServiceAccount } from "../api/drive.js";
-import { buildClaudeCodeCliSnippet, buildMcpConfigSnippet } from "../lib/mcpSnippet.js";
+import { buildClaudeCodeCliSnippet, buildConnectorUrl, buildMcpConfigSnippet } from "../lib/mcpSnippet.js";
 import { getSharedServiceAccountEmail, setSharedServiceAccountEmail } from "../lib/storage.js";
 
 interface SettingsPanelProps {
@@ -45,6 +45,7 @@ export function SettingsPanel({ token, spreadsheetId, onClose, onDisconnect }: S
 
   const cliSnippet = buildClaudeCodeCliSnippet(spreadsheetId);
   const jsonSnippet = buildMcpConfigSnippet(spreadsheetId);
+  const connectorUrl = buildConnectorUrl(window.location.origin);
 
   async function handleShare(): Promise<void> {
     const trimmed = email.trim();
@@ -148,6 +149,18 @@ export function SettingsPanel({ token, spreadsheetId, onClose, onDisconnect }: S
                 <pre>{jsonSnippet}</pre>
                 <CopyButton value={jsonSnippet} />
               </div>
+            </div>
+
+            <div className="field">
+              <span className="field-label">Cloud (claude.ai connector)</span>
+              <div className="copy-row">
+                <pre>{connectorUrl}</pre>
+                <CopyButton value={connectorUrl} />
+              </div>
+              <p className="step-desc">
+                No install — add this URL as a custom connector in claude.ai and sign in with Google when
+                prompted. Requires the deployment to have the connector configured.
+              </p>
             </div>
           </div>
         </div>

@@ -7,6 +7,17 @@
   "bin": {
     "todos-mcp-server": "./dist/index.js"
   },
+  "main": "./dist/mcp.js",
+  "types": "./dist/mcp.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.typecheck.json",

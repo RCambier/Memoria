@@ -31,6 +31,14 @@ credentials, your own Vercel deploy). You can also connect a coding agent
 to a board from the hosted app alone — the Settings panel walks you through
 it; only a service account of your own is needed.
 
+**Using claude.ai?** A deployment can optionally serve a hosted MCP
+connector at `https://<deployment>/api/mcp`: add it in claude.ai →
+Settings → Connectors, sign in with Google, and Claude gets the same six
+board tools against your own board — no install, and it works in scheduled
+and cloud routines too. See
+[docs/SETUP.md](docs/SETUP.md#10-hosted-mcp-connector-for-claudeai-optional-5-min)
+for the three env vars that switch it on.
+
 ## Quickstart (local development)
 
 Once you have credentials from [docs/SETUP.md](docs/SETUP.md):

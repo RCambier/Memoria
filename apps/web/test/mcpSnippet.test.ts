@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildClaudeCodeCliSnippet, buildMcpConfigSnippet } from "../src/lib/mcpSnippet.js";
+import {
+  buildClaudeCodeCliSnippet,
+  buildConnectorUrl,
+  buildMcpConfigSnippet,
+} from "../src/lib/mcpSnippet.js";
 
 describe("buildMcpConfigSnippet", () => {
   it("embeds the spreadsheet id in the env block", () => {
@@ -27,5 +31,19 @@ describe("buildClaudeCodeCliSnippet", () => {
     expect(snippet).toMatch(/^claude mcp add todos --scope user /);
     expect(snippet).toContain("GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json");
     expect(snippet).toMatch(/-- node \/path\/to\/Todos\/.*mcp-server\/dist\/index\.js$/);
+  });
+});
+
+describe("buildConnectorUrl", () => {
+  it("appends /api/mcp to the deployment origin", () => {
+    expect(buildConnectorUrl("https://todos.example.vercel.app")).toBe(
+      "https://todos.example.vercel.app/api/mcp",
+    );
+  });
+
+  it("tolerates a trailing slash on the origin", () => {
+    expect(buildConnectorUrl("https://todos.example.vercel.app/")).toBe(
+      "https://todos.example.vercel.app/api/mcp",
+    );
   });
 });

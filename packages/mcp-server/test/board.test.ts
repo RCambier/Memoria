@@ -2,7 +2,7 @@ import { HEADERS } from "@todos/sheet-core";
 import { beforeEach, describe, expect, it } from "vitest";
 import * as board from "../src/board.js";
 import { MalformedSheetError, TaskNotFoundError } from "../src/board.js";
-import type { SheetStore } from "../src/sheetsClient.js";
+import type { SheetStore } from "../src/sheetStore.js";
 
 /** In-memory fake of the Sheets API surface board.ts depends on. */
 class FakeSheetStore implements SheetStore {

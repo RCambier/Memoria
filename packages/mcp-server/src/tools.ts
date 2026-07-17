@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { STATUSES, type Task } from "@todos/sheet-core";
 import { z } from "zod";
 import * as board from "./board.js";
-import type { SheetStore } from "./sheetsClient.js";
+import type { SheetStore } from "./sheetStore.js";
 
 const statusSchema = z.enum(STATUSES);
 

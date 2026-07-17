@@ -39,3 +39,14 @@ export function buildClaudeCodeCliSnippet(spreadsheetId: string): string {
     `-- node ${SERVER_ENTRYPOINT_PLACEHOLDER}`
   );
 }
+
+/**
+ * The hosted MCP connector URL for claude.ai's custom-connector settings.
+ * Unlike the snippets above there's nothing to fill in: the connector is
+ * served by this same deployment, and each user authenticates with their own
+ * Google account when adding it (no spreadsheet ID needed — the connector
+ * finds the caller's own board).
+ */
+export function buildConnectorUrl(origin: string): string {
+  return `${origin.replace(/\/+$/, "")}/api/mcp`;
+}

@@ -1,26 +1,28 @@
 # Architecture
 
 A kanban todo app whose only backend is a Google Sheet in the user's own Drive.
-Two clients read and write that sheet: a static web app (the board UI) and an
-MCP server (for coding agents like Claude Code or Codex). Neither holds state;
-the sheet is the single source of truth.
+Three clients read and write that sheet: a static web app (the board UI), an
+MCP server (for coding agents like Claude Code or Codex), and an optional
+hosted MCP endpoint (for claude.ai custom connectors). None of them holds
+state; the sheet is the single source of truth.
 
 ```
-                 ┌────────────────────┐
-                 │   Google Sheet     │  ← single source of truth
-                 │   (user's Drive)   │
-                 └───────┬───▲────────┘
-             Sheets API  │   │  Sheets API
-        ┌────────────────┘   └───────────────┐
-        │                                    │
-┌───────▼────────┐                  ┌────────▼─────────┐
-│  apps/web      │                  │ packages/        │
-│  static SPA    │                  │ mcp-server       │
-│  OAuth (user)  │                  │ service account  │
-└────────────────┘                  └────────▲─────────┘
-        │                                    │
-        └────────► packages/sheet-core ◄─────┘
-                   (shared schema + validation)
+                       ┌────────────────────┐
+                       │   Google Sheet     │  ← single source of truth
+                       │   (user's Drive)   │
+                       └──┬───────▲──────┬──┘
+                Sheets API│       │      │Sheets API
+        ┌─────────────────┘       │      └────────────────┐
+        │                         │Sheets API             │
+┌───────▼────────┐      ┌─────────▼──────────┐   ┌────────▼─────────┐
+│  apps/web      │      │  apps/web/api      │   │ packages/        │
+│  static SPA    │      │  hosted MCP        │   │ mcp-server       │
+│  OAuth (user)  │      │  (optional)        │   │ service account  │
+└────────────────┘      │  OAuth (caller)    │   └────────▲─────────┘
+        │               └─────────▲──────────┘            │
+        │                         │                       │
+        └───────► packages/sheet-core ◄───────────────────┘
+                  (shared schema + validation)
 ```
 
 ## Principles
@@ -30,7 +32,9 @@ the sheet is the single source of truth.
 2. **No servers, no secrets.** The web app is static files; the only
    credentials are the user's own (OAuth in the browser, a service-account key
    on the user's machine). Nothing secret ever appears in this repo or its
-   deploys.
+   deploys. (The optional hosted MCP connector adds exactly three server-side
+   env vars — deployment credentials, never user credentials — and nothing
+   else changes if you skip it.)
 3. **Never destroy user data.** Writes are surgical (one task at a time,
    row located by ID at write time). A malformed sheet makes the app
    read-only with a precise error — it is never auto-"repaired".
@@ -111,6 +115,57 @@ No bulk or whole-sheet tools — a confused agent can damage at most one row,
 and Sheets version history covers recovery. Tasks created via MCP set
 `source = "agent"` (see schema) so the UI can show provenance.
 
+The package has two entrypoints: `dist/index.js` is the stdio server binary,
+and `dist/mcp.js` is a transport-free module exporting `registerTools` and
+the `SheetStore` interface — no `googleapis`, no filesystem access. The
+hosted connector (next section) registers the same six tools through that
+second entrypoint against its own `SheetStore`.
+
+### `apps/web/api` — hosted MCP connector (optional)
+
+Vercel Functions deployed alongside the static build, so any user of a
+deployed instance can add `https://<deployment>/api/mcp` as a claude.ai
+custom connector and get the same six tools operating on **their** board in
+**their** Drive. It is opt-in per deployment: it activates only when three
+env vars are set (below); a fork that skips them serves 503 on `/api/*` with
+a plain explanation and loses nothing else — the static app is completely
+unaffected.
+
+The server is stateless in the same spirit as everything else: no database,
+no session store, no stored user credentials. Auth is the MCP authorization
+spec pattern with this deployment acting as an OAuth authorization server
+that proxies Google:
+
+- Dynamic Client Registration returns a `client_id` that *is* the client's
+  redirect URIs (base64url + HMAC tag), so `/authorize` can validate it
+  without storage. Redirect URIs are allowlisted to exactly the claude.ai
+  and claude.com MCP callbacks.
+- `/api/oauth/authorize` validates the client and PKCE (S256 only), seals
+  `{client redirect_uri, state, code_challenge, issued_at}` into an
+  AES-256-GCM blob (key derived from `AUTH_SIGNING_SECRET`) passed as the
+  `state` to Google, and redirects to Google's consent screen
+  (`drive.file` scope, offline access).
+- `/api/oauth/callback` verifies the blob (10-minute TTL), wraps Google's
+  authorization code in a fresh sealed blob — *our* authorization code —
+  and redirects back to the client.
+- `/api/oauth/token` opens that blob, verifies the PKCE verifier
+  (constant-time), exchanges the embedded Google code using our client
+  credentials, and returns Google's tokens as our own. Refresh grants are
+  proxied straight through.
+- Every `/api/mcp` request is authenticated by validating the caller's
+  bearer token against Google's tokeninfo endpoint (scope + audience
+  checked); the board is discovered per request as the caller's most
+  recently modified tagged spreadsheet. All Sheets/Drive calls use the
+  caller's own token — the deployment can never touch a board without the
+  caller's live Google credential in hand.
+
+Env vars (all three required to activate, set in Vercel project settings):
+`GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` (a second,
+"Web application"-type OAuth client in the same GCP project) and
+`AUTH_SIGNING_SECRET` (32+ random hex bytes for the AEAD keys). These are
+the only server-side secrets in the whole project, and they are deployment
+credentials, not user credentials.
+
 ## The sheet schema
 
 One tab named `Tasks`. Row 1 is the header, frozen. Columns:
@@ -158,6 +213,7 @@ acceptable, and version history exists.
 
 ```
 apps/web              React + TS + Vite SPA (@hello-pangea/dnd for drag & drop)
+apps/web/api          optional hosted MCP connector (Vercel Functions, mcp-handler)
 packages/sheet-core   shared schema/validation (no runtime deps)
 packages/mcp-server   MCP stdio server (@modelcontextprotocol/sdk, googleapis)
 docs/                 this file, SETUP.md, design/

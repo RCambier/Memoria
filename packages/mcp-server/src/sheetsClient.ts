@@ -1,17 +1,6 @@
 import { google, type sheets_v4 } from "googleapis";
 import { SHEET_RANGE, SHEET_TAB_NAME } from "@todos/sheet-core";
-
-/**
- * The narrow surface `board.ts` needs. `SheetsClient` implements this
- * structurally; tests can supply a lightweight fake instead of talking to
- * the real Sheets API.
- */
-export interface SheetStore {
-  readRows(): Promise<string[][]>;
-  appendRow(row: string[]): Promise<void>;
-  updateRow(rowNumber: number, row: string[]): Promise<void>;
-  deleteRow(rowNumber: number): Promise<void>;
-}
+import type { SheetStore } from "./sheetStore.js";
 
 /**
  * Thin wrapper around the Sheets v4 API for the one tab this app cares

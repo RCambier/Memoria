@@ -161,6 +161,49 @@ env = { TODOS_SPREADSHEET_ID = "<your spreadsheet id>", GOOGLE_APPLICATION_CREDE
 Restart your agent, then ask it to list, add, or move tasks — it's using
 the same six tools described in `docs/ARCHITECTURE.md`.
 
+## 10. Hosted MCP connector for claude.ai (optional, 5 min)
+
+This lets anyone using your deployment add it as a claude.ai custom
+connector — the same six tools, but running on Vercel and authenticated
+with each user's own Google account instead of a service account. No
+install on any machine, and it works from claude.ai on the web and in
+scheduled/cloud routines. Skip this section entirely and nothing else is
+affected (`/api/*` just answers 503).
+
+1. In **Google Cloud → Credentials → Create Credentials → OAuth client
+   ID**, create a **second** client, also type **Web application**. Under
+   **Authorized redirect URIs** (not JavaScript origins this time), add
+   exactly:
+
+   ```
+   https://<your-deployment>/api/oauth/callback
+   ```
+
+   e.g. `https://your-app.vercel.app/api/oauth/callback`. Save, and copy
+   the client ID **and** client secret.
+
+2. In your Vercel project settings, add three environment variables:
+   - `GOOGLE_OAUTH_CLIENT_ID` — from the client you just created,
+   - `GOOGLE_OAUTH_CLIENT_SECRET` — same place (this one is a real secret;
+     it never leaves Vercel),
+   - `AUTH_SIGNING_SECRET` — 32+ random bytes as hex, e.g. the output of
+     `openssl rand -hex 32`.
+
+3. Redeploy so the functions pick up the env vars.
+
+4. In claude.ai → **Settings → Connectors → Add custom connector**, paste
+   `https://<your-deployment>/api/mcp` (the app's Settings panel shows this
+   URL with a copy button), and approve the Google consent screen when it
+   appears. Sign in with the same Google account whose Drive holds your
+   board — the connector operates on that account's most recently modified
+   board.
+
+To revoke a connector's access later, remove the app under
+[myaccount.google.com](https://myaccount.google.com) → **Security →
+Third-party access** (and delete the connector in claude.ai). The
+deployment itself stores nothing to revoke — it never sees or keeps your
+tokens beyond the request it's serving.
+
 ## Troubleshooting
 
 - **"redirect_uri_mismatch" or sign-in fails** — double check the exact
