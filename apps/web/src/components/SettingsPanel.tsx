@@ -71,9 +71,55 @@ export function SettingsPanel({ token, spreadsheetId, onClose, onDisconnect }: S
         <h2>Settings</h2>
 
         <div>
-          <h3>Connect an agent</h3>
+          <h3>Connect from Claude</h3>
           <p className="settings-intro">
-            Let a coding agent (Claude Code, Codex, …) read and write this board over MCP. Three steps:
+            Give claude.ai (including scheduled routines) access to this board — nothing to install, and you
+            approve with the same Google sign-in this app uses.
+          </p>
+
+          <div className="settings-step">
+            <h4>
+              <span className="step-num">1</span> Copy the connector URL
+            </h4>
+            <div className="field">
+              <div className="copy-row">
+                <pre>{connectorUrl}</pre>
+                <CopyButton value={connectorUrl} />
+              </div>
+            </div>
+          </div>
+
+          <div className="settings-step">
+            <h4>
+              <span className="step-num">2</span> Add it in claude.ai
+            </h4>
+            <p className="step-desc">
+              In claude.ai go to <strong>Settings → Connectors → Add custom connector</strong>, paste the URL,
+              and confirm. Claude will send you to Google&rsquo;s consent screen — approve, and you&rsquo;re
+              connected.
+            </p>
+          </div>
+
+          <div className="settings-step">
+            <h4>
+              <span className="step-num">3</span> Use it
+            </h4>
+            <p className="step-desc">
+              Enable the connector in a chat&rsquo;s (or routine&rsquo;s) tool menu and ask about your board —
+              Claude can list, add, move, and complete your tasks. It sees only this app&rsquo;s boards in
+              your Drive, nothing else, and you can revoke access anytime from your Google account&rsquo;s
+              third-party access page.
+            </p>
+          </div>
+        </div>
+
+        <hr />
+
+        <div>
+          <h3>Connect from a CLI agent</h3>
+          <p className="settings-intro">
+            For Claude Code or Codex running on your own machine, over MCP with a service account. Three
+            steps:
           </p>
 
           <div className="settings-step">
@@ -149,18 +195,6 @@ export function SettingsPanel({ token, spreadsheetId, onClose, onDisconnect }: S
                 <pre>{jsonSnippet}</pre>
                 <CopyButton value={jsonSnippet} />
               </div>
-            </div>
-
-            <div className="field">
-              <span className="field-label">Cloud (claude.ai connector)</span>
-              <div className="copy-row">
-                <pre>{connectorUrl}</pre>
-                <CopyButton value={connectorUrl} />
-              </div>
-              <p className="step-desc">
-                No install — add this URL as a custom connector in claude.ai and sign in with Google when
-                prompted. Requires the deployment to have the connector configured.
-              </p>
             </div>
           </div>
         </div>
