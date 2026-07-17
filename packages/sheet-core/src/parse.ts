@@ -1,4 +1,4 @@
-import { HEADERS } from "./headers.js";
+import { HEADERS, LEGACY_HEADERS } from "./headers.js";
 import { isBlankRow, RowValidationError, rowToTask } from "./serialize.js";
 import { STATUSES, type SheetRow, type Task } from "./types.js";
 
@@ -15,7 +15,29 @@ export interface SheetError {
   message: string;
 }
 
-export type ParseResult = { ok: true; tasks: Task[] } | { ok: false; error: SheetError };
+export type ParseResult =
+  | {
+      ok: true;
+      tasks: Task[];
+      /**
+       * True when the sheet still has the pre-`due_date`/`tags` 8-column
+       * header. Tasks parse fine (those fields are just empty); the web app
+       * uses this flag to extend the header row in place — an additive write
+       * of two new header cells, never touching data.
+       */
+      legacyHeader: boolean;
+    }
+  | { ok: false; error: SheetError };
+
+/** True if `row` matches `headers` exactly — same names, same order, nothing extra. */
+function matchesHeaders(row: SheetRow, headers: readonly string[]): boolean {
+  if (row.length < headers.length) return false;
+  for (let i = 0; i < row.length; i++) {
+    const expected = headers[i] ?? "";
+    if ((row[i] ?? "").trim() !== expected) return false;
+  }
+  return true;
+}
 
 function headerError(row: SheetRow | undefined): SheetError | null {
   if (row === undefined || row.length === 0) {
@@ -63,6 +85,9 @@ function fieldErrorMessage(row: number, err: RowValidationError): SheetError {
     case "updated_at":
       message = `Row ${row}: updated_at is required but was empty.`;
       break;
+    case "due_date":
+      message = `Row ${row}: due_date "${value}" isn't a YYYY-MM-DD date (leave it empty for no due date).`;
+      break;
     default:
       message = `Row ${row}: ${column} "${value}" is invalid.`;
   }
@@ -78,8 +103,11 @@ function fieldErrorMessage(row: number, err: RowValidationError): SheetError {
  * column, offending value, and a plain-English sentence).
  */
 export function parseSheet(rows: readonly SheetRow[]): ParseResult {
-  const hErr = headerError(rows[0]);
-  if (hErr) return { ok: false, error: hErr };
+  const legacyHeader = rows[0] !== undefined && matchesHeaders(rows[0], LEGACY_HEADERS);
+  if (!legacyHeader) {
+    const hErr = headerError(rows[0]);
+    if (hErr) return { ok: false, error: hErr };
+  }
 
   const tasks: Task[] = [];
   const idToRow = new Map<string, number>();
@@ -113,5 +141,5 @@ export function parseSheet(rows: readonly SheetRow[]): ParseResult {
     }
   }
 
-  return { ok: true, tasks };
+  return { ok: true, tasks, legacyHeader };
 }

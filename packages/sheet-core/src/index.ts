@@ -2,6 +2,7 @@ export {
   SHEET_TAB_NAME,
   SHEET_RANGE,
   HEADERS,
+  LEGACY_HEADERS,
   APP_PROPERTY_KEY,
   APP_PROPERTY_VALUE,
   type Header,
@@ -9,5 +10,5 @@ export {
 export { STATUSES, isStatus, SOURCES, type Status, type Source, type Task, type SheetRow } from "./types.js";
 export { generateId } from "./id.js";
 export { topSortOrder, betweenSortOrder, sortByOrder, boardOrder } from "./ordering.js";
-export { taskToRow, rowToTask, isBlankRow, RowValidationError } from "./serialize.js";
+export { taskToRow, rowToTask, parseTags, isBlankRow, RowValidationError } from "./serialize.js";
 export { parseSheet, type ParseResult, type SheetError } from "./parse.js";

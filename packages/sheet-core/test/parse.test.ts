@@ -227,3 +227,55 @@ describe("parseSheet — row errors", () => {
     if (!result.ok) expect(result.error.row).toBe(2);
   });
 });
+
+describe("parseSheet — legacy 8-column header", () => {
+  const legacyHeader = [...HEADERS.slice(0, 8)];
+  const legacyRow = [
+    "id9",
+    "Old task",
+    "backlog",
+    "0",
+    "",
+    "user",
+    "2026-01-01T00:00:00.000Z",
+    "2026-01-01T00:00:00.000Z",
+  ];
+
+  it("parses and flags legacyHeader", () => {
+    const result = parseSheet([legacyHeader, legacyRow]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.legacyHeader).toBe(true);
+      expect(result.tasks[0]?.dueDate).toBe("");
+      expect(result.tasks[0]?.tags).toEqual([]);
+    }
+  });
+
+  it("full header is not flagged as legacy", () => {
+    const result = parseSheet([[...HEADERS]]);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.legacyHeader).toBe(false);
+  });
+});
+
+describe("parseSheet — due_date and tags", () => {
+  it("rejects a malformed due_date with a precise error", () => {
+    const bad = [...goodRow1.slice(0, 8), "next tuesday", ""];
+    const result = parseSheet([[...HEADERS], bad]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.column).toBe("due_date");
+      expect(result.error.message).toContain("next tuesday");
+    }
+  });
+
+  it("accepts a valid due_date and comma-separated tags", () => {
+    const row = [...goodRow1.slice(0, 8), "2026-07-21", "errand, home"];
+    const result = parseSheet([[...HEADERS], row]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.tasks[0]?.dueDate).toBe("2026-07-21");
+      expect(result.tasks[0]?.tags).toEqual(["errand", "home"]);
+    }
+  });
+});

@@ -41,7 +41,7 @@ export function Shell({ token, spreadsheetId, onDisconnect }: ShellProps) {
       <Board
         tasks={tasks}
         readOnly={readOnly}
-        onAdd={(status, title) => void addTask({ title, status })}
+        onAdd={(status, input) => void addTask({ ...input, status })}
         onMove={(id, status, dropIndex) => void moveTask(id, status, dropIndex)}
         onDelete={(id) => void deleteTask(id)}
       />

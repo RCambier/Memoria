@@ -52,12 +52,17 @@ export function Topbar({ spreadsheetId, boardStatus, lastSyncedAt, onOpenSetting
 
   return (
     <div className="topbar">
-      <div className="board-name">
-        <span className="glyph">✓</span> Todos
-      </div>
-      <div className={`sync${offline ? " offline" : ""}`} title={label} aria-label={label} role="status">
-        <span className="dot" />
-        <span className="sync-label">{label}</span>
+      <div className="topbar-left">
+        <div className="board-name">
+          <span className="glyph">✓</span> Todos
+        </div>
+        {/* Sync state lives quietly beside the name — a dot that's green when
+            healthy, amber when offline, with the detail in text on wide
+            screens and in the tooltip everywhere. */}
+        <div className={`sync${offline ? " offline" : ""}`} title={label} aria-label={label} role="status">
+          <span className="dot" />
+          <span className="sync-label">{label}</span>
+        </div>
       </div>
       <div className="spacer" />
       <a
@@ -69,7 +74,7 @@ export function Topbar({ spreadsheetId, boardStatus, lastSyncedAt, onOpenSetting
         title="Open in Google Sheets"
       >
         <SheetIcon />
-        <span className="top-link-label">Open in Google Sheets ↗</span>
+        <span className="top-link-label">Open in Google Sheets</span>
       </a>
       <button
         className="top-link"
@@ -80,9 +85,6 @@ export function Topbar({ spreadsheetId, boardStatus, lastSyncedAt, onOpenSetting
         <AgentIcon />
         <span className="top-link-label">Connect from agents</span>
       </button>
-      <div className="avatar" aria-hidden="true">
-        ✓
-      </div>
     </div>
   );
 }

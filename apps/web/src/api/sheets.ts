@@ -3,8 +3,11 @@ import { authedFetch, authedJson } from "./http.js";
 
 const BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 
+/** Last column letter, derived from the header count so it can't drift from the schema. */
+const LAST_COLUMN = String.fromCharCode(64 + HEADERS.length);
+
 function rowRange(rowNumber: number): string {
-  return `${SHEET_TAB_NAME}!A${rowNumber}:H${rowNumber}`;
+  return `${SHEET_TAB_NAME}!A${rowNumber}:${LAST_COLUMN}${rowNumber}`;
 }
 
 /** Reads every row currently in the Tasks tab, header included. */

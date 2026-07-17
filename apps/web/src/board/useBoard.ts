@@ -1,5 +1,6 @@
 import { boardOrder, STATUSES, type SheetError, type Status, type Task } from "@todos/sheet-core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { writeHeaderRow } from "../api/sheets.js";
 import * as boardApi from "./boardApi.js";
 import { computeDropSortOrder } from "./dropOrder.js";
 
@@ -15,7 +16,13 @@ export interface UseBoardResult {
   state: BoardState;
   /** When the last successful (or malformed-but-reachable) read completed. */
   lastSyncedAt: Date | null;
-  addTask: (input: { title: string; notes?: string; status: Status }) => Promise<void>;
+  addTask: (input: {
+    title: string;
+    notes?: string;
+    status: Status;
+    dueDate?: string;
+    tags?: string[];
+  }) => Promise<void>;
   updateTask: (id: string, patch: { title?: string; notes?: string }) => Promise<void>;
   /** Moves a task to `status`, inserting it at `dropIndex` among that column's other tasks. */
   moveTask: (id: string, status: Status, dropIndex: number) => Promise<void>;
@@ -37,6 +44,8 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
   stateRef.current = state;
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const upgradedHeader = useRef(false);
+
   const refresh = useCallback(async () => {
     if (!token || !spreadsheetId) return;
     try {
@@ -44,6 +53,14 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
       setLastSyncedAt(new Date());
       if (result.ok) {
         setState({ status: "ready", tasks: boardOrder(result.tasks, STATUSES) });
+        // Older boards predate the due_date/tags columns. Extend the header
+        // row in place, once — purely additive; task rows are never touched.
+        if (result.legacyHeader && !upgradedHeader.current) {
+          upgradedHeader.current = true;
+          writeHeaderRow(token, spreadsheetId).catch(() => {
+            upgradedHeader.current = false;
+          });
+        }
       } else {
         setState({ status: "malformed", error: result.error });
       }
@@ -88,7 +105,7 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
   }, [token, spreadsheetId, refresh]);
 
   const addTask = useCallback(
-    async (input: { title: string; notes?: string; status: Status }) => {
+    async (input: { title: string; notes?: string; status: Status; dueDate?: string; tags?: string[] }) => {
       if (!token || !spreadsheetId || stateRef.current.status !== "ready") return;
       const columnOrders = stateRef.current.tasks
         .filter((t) => t.status === input.status)

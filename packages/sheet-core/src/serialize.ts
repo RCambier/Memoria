@@ -50,6 +50,12 @@ export function rowToTask(row: SheetRow): Task {
   const updatedAt = cell(row, 7).trim();
   if (updatedAt === "") throw new RowValidationError("updated_at", cell(row, 7));
 
+  const dueDate = cell(row, 8).trim();
+  if (dueDate !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+    throw new RowValidationError("due_date", cell(row, 8));
+  }
+  const tags = parseTags(cell(row, 9));
+
   return {
     id,
     title,
@@ -59,7 +65,17 @@ export function rowToTask(row: SheetRow): Task {
     source,
     createdAt,
     updatedAt,
+    dueDate,
+    tags,
   };
+}
+
+/** Splits the sheet's comma-separated `tags` cell into clean tag names. */
+export function parseTags(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t !== "");
 }
 
 /** Converts a `Task` into a raw row, in `HEADERS` column order, ready to write. */
@@ -73,6 +89,8 @@ export function taskToRow(task: Task): SheetRow {
     task.source,
     task.createdAt,
     task.updatedAt,
+    task.dueDate,
+    task.tags.join(", "),
   ];
 }
 

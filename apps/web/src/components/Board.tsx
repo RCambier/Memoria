@@ -3,6 +3,7 @@ import { STATUSES, type Status, type Task } from "@todos/sheet-core";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsTouch } from "../lib/useIsTouch.js";
 import { Column } from "./Column.js";
+import type { NewTaskInput } from "./Composer.js";
 
 const STATUS_LABEL: Record<Status, string> = {
   backlog: "Backlog",
@@ -16,7 +17,7 @@ const DEFAULT_MOBILE_STATUS: Status = "in_progress";
 interface BoardProps {
   tasks: Task[];
   readOnly: boolean;
-  onAdd: (status: Status, title: string) => void;
+  onAdd: (status: Status, input: NewTaskInput) => void;
   onMove: (id: string, status: Status, dropIndex: number) => void;
   onDelete: (id: string) => void;
 }
@@ -104,7 +105,7 @@ export function Board({ tasks, readOnly, onAdd, onMove, onDelete }: BoardProps) 
               tasks={byStatus[status]}
               isTouch={isTouch}
               readOnly={readOnly}
-              onAdd={(title) => onAdd(status, title)}
+              onAdd={(input) => onAdd(status, input)}
               onMove={(id, s) => onMove(id, s, 0)}
               onDelete={onDelete}
             />

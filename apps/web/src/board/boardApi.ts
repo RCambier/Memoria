@@ -50,7 +50,7 @@ export async function fetchBoard(token: string, spreadsheetId: string): Promise<
 /** Pure: builds the `Task` object for a new task, given the sort orders already in its column. */
 export function buildNewTask(
   columnOrders: readonly number[],
-  input: { title: string; notes?: string; status: Status },
+  input: { title: string; notes?: string; status: Status; dueDate?: string; tags?: string[] },
   source: Source = "user",
 ): Task {
   const now = new Date().toISOString();
@@ -63,6 +63,8 @@ export function buildNewTask(
     source,
     createdAt: now,
     updatedAt: now,
+    dueDate: input.dueDate ?? "",
+    tags: input.tags ?? [],
   };
 }
 

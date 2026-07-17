@@ -1,5 +1,6 @@
 import { Draggable } from "@hello-pangea/dnd";
 import type { Status, Task } from "@todos/sheet-core";
+import { tagColorClass } from "../lib/tagColor.js";
 
 const STATUS_LABEL: Record<Status, string> = {
   backlog: "Backlog",
@@ -13,6 +14,21 @@ function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** Formats a `YYYY-MM-DD` due date as e.g. "Jul 21" (local, no timezone drift). */
+function formatDueDate(dueDate: string): string {
+  const d = new Date(`${dueDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dueDate;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** A due date is overdue once the local calendar day has passed — unless the task is done. */
+function isOverdue(task: Task): boolean {
+  if (!task.dueDate || task.status === "done") return false;
+  const today = new Date();
+  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return task.dueDate < localToday;
 }
 
 interface CardProps {
@@ -64,8 +80,22 @@ export function Card({ task, index, isTouch, readOnly, onMove, onDelete }: CardP
               )}
             </div>
             {task.notes && <p className="notes">{task.notes}</p>}
+            {task.tags.length > 0 && (
+              <div className="card-tags">
+                {task.tags.map((t) => (
+                  <span key={t} className={`tag ${tagColorClass(t)}`}>
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="meta">
               {task.source === "agent" && <span className="chip">✳ agent</span>}
+              {task.dueDate && (
+                <span className={`due${isOverdue(task) ? " overdue" : ""}`} title={`Due ${task.dueDate}`}>
+                  ⚑ {formatDueDate(task.dueDate)}
+                </span>
+              )}
               <span>{formatDate(task.createdAt)}</span>
             </div>
             {isTouch && !readOnly && (

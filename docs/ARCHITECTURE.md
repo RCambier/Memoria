@@ -105,8 +105,8 @@ re-locates the row by ID first, exactly like the web app):
 | tool | input | behavior |
 |---|---|---|
 | `list_tasks` | optional `status` filter | tasks in board order |
-| `add_task` | `title`, optional `notes`, optional `status` (default `backlog`) | insert at top of column |
-| `update_task` | `id`, optional `title`, optional `notes` | edit fields |
+| `add_task` | `title`, optional `notes`, `status` (default `backlog`), `due_date`, `tags` | insert at top of column |
+| `update_task` | `id`, optional `title`, `notes`, `due_date`, `tags` | edit fields |
 | `move_task` | `id`, `status` | move to top of target column |
 | `complete_task` | `id` | sugar for `move_task(done)` |
 | `delete_task` | `id` | delete that row |
@@ -180,11 +180,21 @@ One tab named `Tasks`. Row 1 is the header, frozen. Columns:
 | `source` | string | `user` or `agent`; informational only |
 | `created_at` | ISO 8601 string | set once |
 | `updated_at` | ISO 8601 string | set on every mutation |
+| `due_date` | string | `YYYY-MM-DD` or empty; optional |
+| `tags` | string | comma-separated labels; optional (so tag names can't contain commas) |
 
 Validation rules (enforced identically by both clients via `sheet-core`):
 header row must match exactly; `id`, `title`, `status` required;
-`status` must be in the enum; `sort_order` must be numeric. Empty rows are
-ignored. Anything else → precise validation error.
+`status` must be in the enum; `sort_order` must be numeric; `due_date`, if
+present, must be `YYYY-MM-DD`. Empty rows are ignored. Anything else →
+precise validation error.
+
+**Schema evolution**: `due_date` and `tags` were added after the original
+8-column schema. A sheet with the old header still validates (its tasks
+just have empty due dates and tags), and the web app extends the header row
+in place the first time it loads such a board — an additive write of two
+header cells that never touches task rows. This keeps existing boards
+working without a migration step.
 
 **Ordering**: `sort_order` is a float. Insert at top = `min(column) − 1`
 (or `0` for an empty column). Drop between two cards = midpoint. No global

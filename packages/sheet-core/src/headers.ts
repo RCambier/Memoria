@@ -8,11 +8,12 @@
 export const SHEET_TAB_NAME = "Tasks";
 
 /** The A1 range covering the whole tab (header + data). */
-export const SHEET_RANGE = `${SHEET_TAB_NAME}!A:H`;
+export const SHEET_RANGE = `${SHEET_TAB_NAME}!A:J`;
 
 /**
- * Column headers, in column order (A..H). This is the contract both clients
- * validate against — the header row of the sheet must match exactly.
+ * Column headers, in column order (A..J). This is the contract both clients
+ * validate against — the header row of the sheet must match exactly (or
+ * match `LEGACY_HEADERS`, the pre-due_date/tags shape; see `parseSheet`).
  */
 export const HEADERS = [
   "id",
@@ -23,7 +24,17 @@ export const HEADERS = [
   "source",
   "created_at",
   "updated_at",
+  "due_date",
+  "tags",
 ] as const;
+
+/**
+ * The original 8-column header (before `due_date` and `tags`). Sheets with
+ * this exact header still parse — their tasks just have no due date or tags
+ * — and the web app extends the header in place (an additive, non-destructive
+ * write of two new header cells) the first time it loads one.
+ */
+export const LEGACY_HEADERS = HEADERS.slice(0, 8);
 
 export type Header = (typeof HEADERS)[number];
 

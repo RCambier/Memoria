@@ -1,5 +1,5 @@
 import { google, type sheets_v4 } from "googleapis";
-import { SHEET_RANGE, SHEET_TAB_NAME } from "@todos/sheet-core";
+import { HEADERS, SHEET_RANGE, SHEET_TAB_NAME } from "@todos/sheet-core";
 import type { SheetStore } from "./sheetStore.js";
 
 /**
@@ -49,7 +49,7 @@ export class SheetsClient implements SheetStore {
   async updateRow(rowNumber: number, row: string[]): Promise<void> {
     await this.sheets.spreadsheets.values.update({
       spreadsheetId: this.spreadsheetId,
-      range: `${SHEET_TAB_NAME}!A${rowNumber}:H${rowNumber}`,
+      range: `${SHEET_TAB_NAME}!A${rowNumber}:${String.fromCharCode(64 + HEADERS.length)}${rowNumber}`,
       valueInputOption: "RAW",
       requestBody: { values: [row] },
     });

@@ -2,7 +2,7 @@ import { Droppable } from "@hello-pangea/dnd";
 import type { Status, Task } from "@todos/sheet-core";
 import { useState } from "react";
 import { Card } from "./Card.js";
-import { Composer } from "./Composer.js";
+import { Composer, type NewTaskInput } from "./Composer.js";
 
 const STATUS_LABEL: Record<Status, string> = {
   backlog: "Backlog",
@@ -22,7 +22,7 @@ interface ColumnProps {
   readOnly: boolean;
   /** Attaches the mobile pager's panel ref to this column's root element. */
   panelRef: (el: HTMLDivElement | null) => void;
-  onAdd: (title: string) => void;
+  onAdd: (input: NewTaskInput) => void;
   onMove: (id: string, status: Status) => void;
   onDelete: (id: string) => void;
 }
@@ -53,8 +53,8 @@ export function Column({ status, tasks, isTouch, readOnly, panelRef, onAdd, onMo
           <div className="stack" ref={provided.innerRef} {...provided.droppableProps}>
             {composerOpen && (
               <Composer
-                onSubmit={(title) => {
-                  onAdd(title);
+                onSubmit={(input) => {
+                  onAdd(input);
                   setComposerOpen(false);
                 }}
                 onCancel={() => setComposerOpen(false)}

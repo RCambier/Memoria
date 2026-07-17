@@ -6,6 +6,23 @@ import type { SheetStore } from "./sheetStore.js";
 
 const statusSchema = z.enum(STATUSES);
 
+const dueDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "due_date must be YYYY-MM-DD")
+  .or(z.literal(""))
+  .optional()
+  .describe("Due date as YYYY-MM-DD; pass an empty string to clear it.");
+
+const tagsSchema = z
+  .array(
+    z
+      .string()
+      .min(1)
+      .regex(/^[^,]+$/, "tag names can't contain commas"),
+  )
+  .optional()
+  .describe("Labels for the task; replaces the existing set when provided.");
+
 function taskText(task: Task): string {
   return JSON.stringify(task, null, 2);
 }
@@ -40,10 +57,12 @@ export function registerTools(server: McpServer, client: SheetStore): void {
       title: z.string().min(1, "title is required"),
       notes: z.string().optional(),
       status: statusSchema.optional().describe("Defaults to backlog."),
+      due_date: dueDateSchema,
+      tags: tagsSchema,
     },
-    async ({ title, notes, status }) => {
+    async ({ title, notes, status, due_date, tags }) => {
       try {
-        const task = await board.addTask(client, { title, notes, status });
+        const task = await board.addTask(client, { title, notes, status, dueDate: due_date, tags });
         return { content: [{ type: "text", text: taskText(task) }] };
       } catch (err) {
         return errorResult(err);
@@ -53,15 +72,18 @@ export function registerTools(server: McpServer, client: SheetStore): void {
 
   server.tool(
     "update_task",
-    "Edit a task's title and/or notes. Fields you omit are left unchanged. Get the id from list_tasks.",
+    "Edit a task's title, notes, due date, and/or tags. Fields you omit are left unchanged. " +
+      "Get the id from list_tasks.",
     {
       id: z.string().min(1),
       title: z.string().min(1).optional(),
       notes: z.string().optional(),
+      due_date: dueDateSchema,
+      tags: tagsSchema,
     },
-    async ({ id, title, notes }) => {
+    async ({ id, title, notes, due_date, tags }) => {
       try {
-        const task = await board.updateTask(client, id, { title, notes });
+        const task = await board.updateTask(client, id, { title, notes, dueDate: due_date, tags });
         return { content: [{ type: "text", text: taskText(task) }] };
       } catch (err) {
         return errorResult(err);

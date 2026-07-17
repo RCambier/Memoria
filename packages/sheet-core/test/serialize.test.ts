@@ -24,6 +24,8 @@ describe("rowToTask", () => {
       source: "agent",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
+      dueDate: "",
+      tags: [],
     });
   });
 
@@ -224,6 +226,8 @@ describe("taskToRow", () => {
       source: "agent",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
+      dueDate: "2026-07-21",
+      tags: ["errand", "home"],
     };
     expect(rowToTask(taskToRow(task))).toEqual(task);
   });
@@ -238,6 +242,8 @@ describe("taskToRow", () => {
       source: "user",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
+      dueDate: "2026-07-21",
+      tags: ["errand", "home"],
     };
     expect(taskToRow(task)).toEqual([
       "id1",
@@ -248,6 +254,8 @@ describe("taskToRow", () => {
       "user",
       "2026-01-01T00:00:00.000Z",
       "2026-01-01T00:00:00.000Z",
+      "2026-07-21",
+      "errand, home",
     ]);
   });
 });

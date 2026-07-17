@@ -54,7 +54,7 @@ export async function listTasks(client: SheetStore, status?: Status): Promise<Ta
 
 export async function addTask(
   client: SheetStore,
-  input: { title: string; notes?: string; status?: Status },
+  input: { title: string; notes?: string; status?: Status; dueDate?: string; tags?: string[] },
 ): Promise<Task> {
   const { tasks } = await readValidTasks(client);
   const status = input.status ?? "backlog";
@@ -69,6 +69,8 @@ export async function addTask(
     source: "agent",
     createdAt: now,
     updatedAt: now,
+    dueDate: input.dueDate ?? "",
+    tags: input.tags ?? [],
   };
   await client.appendRow(taskToRow(task));
   return task;
@@ -77,7 +79,7 @@ export async function addTask(
 export async function updateTask(
   client: SheetStore,
   id: string,
-  patch: { title?: string; notes?: string },
+  patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] },
 ): Promise<Task> {
   const { tasks, rawRows } = await readValidTasks(client);
   const current = tasks.find((t) => t.id === id);
@@ -87,6 +89,8 @@ export async function updateTask(
     ...current,
     title: patch.title ?? current.title,
     notes: patch.notes ?? current.notes,
+    dueDate: patch.dueDate ?? current.dueDate,
+    tags: patch.tags ?? current.tags,
     updatedAt: new Date().toISOString(),
   };
   const rowNumber = locateRow(rawRows, id);
