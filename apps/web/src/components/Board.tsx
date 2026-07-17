@@ -1,13 +1,6 @@
-import {
-  closestCenter,
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
+import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { STATUSES, type Status, type Task } from "@todos/sheet-core";
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsTouch } from "../lib/useIsTouch.js";
 import { Column } from "./Column.js";
 
@@ -16,6 +9,9 @@ const STATUS_LABEL: Record<Status, string> = {
   in_progress: "In progress",
   done: "Done",
 };
+
+/** The panel shown by default on mobile load — the column most people care about day to day. */
+const DEFAULT_MOBILE_STATUS: Status = "in_progress";
 
 interface BoardProps {
   tasks: Task[];
@@ -27,8 +23,9 @@ interface BoardProps {
 
 export function Board({ tasks, readOnly, onAdd, onMove, onDelete }: BoardProps) {
   const isTouch = useIsTouch();
-  const [activeMobileStatus, setActiveMobileStatus] = useState<Status>("backlog");
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const [activeMobileStatus, setActiveMobileStatus] = useState<Status>(DEFAULT_MOBILE_STATUS);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const panelRefs = useRef<Partial<Record<Status, HTMLDivElement>>>({});
 
   const byStatus = useMemo(() => {
     const map: Record<Status, Task[]> = { backlog: [], in_progress: [], done: [] };
@@ -36,35 +33,49 @@ export function Board({ tasks, readOnly, onAdd, onMove, onDelete }: BoardProps) 
     return map;
   }, [tasks]);
 
-  function handleDragEnd(event: DragEndEvent): void {
-    if (readOnly) return;
-    const { active, over } = event;
-    if (!over) return;
+  // Land on the "In progress" panel by default (no animation — this is the
+  // initial position, not a navigation). useLayoutEffect so it happens
+  // before paint, with no visible jump from "Backlog" to "In progress".
+  useLayoutEffect(() => {
+    const board = boardRef.current;
+    const panel = panelRefs.current[DEFAULT_MOBILE_STATUS];
+    if (board && panel) board.scrollLeft = panel.offsetLeft;
+  }, []);
 
-    const activeId = String(active.id);
-    const activeTask = tasks.find((t) => t.id === activeId);
-    if (!activeTask) return;
-
-    const overId = String(over.id);
-    let destStatus: Status;
-    let destIndex: number;
-
-    if ((STATUSES as readonly string[]).includes(overId)) {
-      destStatus = overId as Status;
-      destIndex = byStatus[destStatus].filter((t) => t.id !== activeId).length;
-    } else {
-      const overTask = tasks.find((t) => t.id === overId);
-      if (!overTask) return;
-      destStatus = overTask.status;
-      const columnIds = byStatus[destStatus].filter((t) => t.id !== activeId).map((t) => t.id);
-      const idx = columnIds.indexOf(overId);
-      destIndex = idx === -1 ? columnIds.length : idx;
+  // Swiping between panels updates which segment reads as active. Panels
+  // are equal-width snap points, so the visible one is just whichever
+  // multiple of the container's width the scroll position is nearest to —
+  // a plain scroll listener computing that is simpler (and avoids
+  // IntersectionObserver's threshold tuning) than observing each panel.
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    function onScroll(): void {
+      const current = boardRef.current;
+      if (!current) return;
+      const width = current.clientWidth || 1;
+      const index = Math.round(current.scrollLeft / width);
+      const clamped = Math.min(STATUSES.length - 1, Math.max(0, index));
+      setActiveMobileStatus(STATUSES[clamped] ?? DEFAULT_MOBILE_STATUS);
     }
+    board.addEventListener("scroll", onScroll, { passive: true });
+    return () => board.removeEventListener("scroll", onScroll);
+  }, []);
 
-    const currentIndex = byStatus[activeTask.status].findIndex((t) => t.id === activeId);
-    if (destStatus === activeTask.status && destIndex === currentIndex) return;
+  function goToPanel(status: Status): void {
+    setActiveMobileStatus(status);
+    const board = boardRef.current;
+    const panel = panelRefs.current[status];
+    if (board && panel) board.scrollTo({ left: panel.offsetLeft, behavior: "smooth" });
+  }
 
-    onMove(activeId, destStatus, destIndex);
+  function handleDragEnd(result: DropResult): void {
+    if (readOnly) return;
+    const { draggableId, source, destination } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+
+    onMove(draggableId, destination.droppableId as Status, destination.index);
   }
 
   return (
@@ -75,21 +86,23 @@ export function Board({ tasks, readOnly, onAdd, onMove, onDelete }: BoardProps) 
             key={status}
             type="button"
             className={status === activeMobileStatus ? "active" : ""}
-            onClick={() => setActiveMobileStatus(status)}
+            onClick={() => goToPanel(status)}
           >
             {STATUS_LABEL[status]}
           </button>
         ))}
       </div>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="board">
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="board" ref={boardRef}>
           {STATUSES.map((status) => (
             <Column
               key={status}
+              panelRef={(el) => {
+                if (el) panelRefs.current[status] = el;
+              }}
               status={status}
               tasks={byStatus[status]}
               isTouch={isTouch}
-              isActive={status === activeMobileStatus}
               readOnly={readOnly}
               onAdd={(title) => onAdd(status, title)}
               onMove={(id, s) => onMove(id, s, 0)}
@@ -97,7 +110,7 @@ export function Board({ tasks, readOnly, onAdd, onMove, onDelete }: BoardProps) 
             />
           ))}
         </div>
-      </DndContext>
+      </DragDropContext>
     </div>
   );
 }

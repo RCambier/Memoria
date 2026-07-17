@@ -157,7 +157,7 @@ acceptable, and version history exists.
 ## Repo layout & tooling
 
 ```
-apps/web              React + TS + Vite SPA (dnd-kit for drag & drop)
+apps/web              React + TS + Vite SPA (@hello-pangea/dnd for drag & drop)
 packages/sheet-core   shared schema/validation (no runtime deps)
 packages/mcp-server   MCP stdio server (@modelcontextprotocol/sdk, googleapis)
 docs/                 this file, SETUP.md, design/

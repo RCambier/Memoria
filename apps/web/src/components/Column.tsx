@@ -1,5 +1,4 @@
-import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Droppable } from "@hello-pangea/dnd";
 import type { Status, Task } from "@todos/sheet-core";
 import { useState } from "react";
 import { Card } from "./Card.js";
@@ -20,19 +19,19 @@ interface ColumnProps {
   status: Status;
   tasks: Task[];
   isTouch: boolean;
-  isActive: boolean;
   readOnly: boolean;
+  /** Attaches the mobile pager's panel ref to this column's root element. */
+  panelRef: (el: HTMLDivElement | null) => void;
   onAdd: (title: string) => void;
   onMove: (id: string, status: Status) => void;
   onDelete: (id: string) => void;
 }
 
-export function Column({ status, tasks, isTouch, isActive, readOnly, onAdd, onMove, onDelete }: ColumnProps) {
-  const { setNodeRef } = useDroppable({ id: status });
+export function Column({ status, tasks, isTouch, readOnly, panelRef, onAdd, onMove, onDelete }: ColumnProps) {
   const [composerOpen, setComposerOpen] = useState(false);
 
   return (
-    <div className={`col${isActive ? " active" : ""}`}>
+    <div className="col" ref={panelRef} data-status={status}>
       <div className="col-head">
         <span className={`status-pill ${STATUS_PILL_CLASS[status]}`}>
           <span className="sdot" />
@@ -49,34 +48,38 @@ export function Column({ status, tasks, isTouch, isActive, readOnly, onAdd, onMo
           </button>
         )}
       </div>
-      <div className="stack" ref={setNodeRef}>
-        {composerOpen && (
-          <Composer
-            onSubmit={(title) => {
-              onAdd(title);
-              setComposerOpen(false);
-            }}
-            onCancel={() => setComposerOpen(false)}
-          />
+      <Droppable droppableId={status}>
+        {(provided) => (
+          <div className="stack" ref={provided.innerRef} {...provided.droppableProps}>
+            {composerOpen && (
+              <Composer
+                onSubmit={(title) => {
+                  onAdd(title);
+                  setComposerOpen(false);
+                }}
+                onCancel={() => setComposerOpen(false)}
+              />
+            )}
+            {tasks.map((task, index) => (
+              <Card
+                key={task.id}
+                task={task}
+                index={index}
+                isTouch={isTouch}
+                readOnly={readOnly}
+                onMove={(s) => onMove(task.id, s)}
+                onDelete={() => onDelete(task.id)}
+              />
+            ))}
+            {provided.placeholder}
+            {tasks.length === 0 && !composerOpen && !readOnly && (
+              <button className="ghost-add" onClick={() => setComposerOpen(true)}>
+                + New task
+              </button>
+            )}
+          </div>
         )}
-        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map((task) => (
-            <Card
-              key={task.id}
-              task={task}
-              isTouch={isTouch}
-              readOnly={readOnly}
-              onMove={(s) => onMove(task.id, s)}
-              onDelete={() => onDelete(task.id)}
-            />
-          ))}
-        </SortableContext>
-        {tasks.length === 0 && !composerOpen && !readOnly && (
-          <button className="ghost-add" onClick={() => setComposerOpen(true)}>
-            + New task
-          </button>
-        )}
-      </div>
+      </Droppable>
     </div>
   );
 }
