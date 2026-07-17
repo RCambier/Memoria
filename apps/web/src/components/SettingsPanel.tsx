@@ -68,7 +68,7 @@ export function SettingsPanel({ token, spreadsheetId, onClose, onDisconnect }: S
         <button className="close" aria-label="Close settings" onClick={onClose}>
           ×
         </button>
-        <h2>Settings</h2>
+        <h2>Connect from agents</h2>
 
         <div>
           <h3>Connect from Claude</h3>

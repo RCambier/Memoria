@@ -27,15 +27,18 @@ function SheetIcon() {
   );
 }
 
-/** Simple gear glyph — stands in for the "Settings" button on narrow screens. */
-function GearIcon() {
+/**
+ * Six-ray spark — the app's own "agent" mark, matching the ✳ chip on
+ * agent-created cards. (Deliberately not a Claude/Codex/MCP logo: those are
+ * third-party trademarks this MIT repo shouldn't ship.)
+ */
+function AgentIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3" />
       <path
-        d="M8 1.6v1.6M8 12.8v1.6M14.4 8h-1.6M3.2 8H1.6M12.34 3.66l-1.13 1.13M4.79 11.21l-1.13 1.13M12.34 12.34l-1.13-1.13M4.79 4.79 3.66 3.66"
+        d="M8 2.2v11.6M2.98 5.1l10.04 5.8M13.02 5.1 2.98 10.9"
         stroke="currentColor"
-        strokeWidth="1.3"
+        strokeWidth="1.4"
         strokeLinecap="round"
       />
     </svg>
@@ -68,9 +71,14 @@ export function Topbar({ spreadsheetId, boardStatus, lastSyncedAt, onOpenSetting
         <SheetIcon />
         <span className="top-link-label">Open in Google Sheets ↗</span>
       </a>
-      <button className="top-link" onClick={onOpenSettings} aria-label="Settings" title="Settings">
-        <GearIcon />
-        <span className="top-link-label">Settings</span>
+      <button
+        className="top-link"
+        onClick={onOpenSettings}
+        aria-label="Connect from agents"
+        title="Connect from agents"
+      >
+        <AgentIcon />
+        <span className="top-link-label">Connect from agents</span>
       </button>
       <div className="avatar" aria-hidden="true">
         ✓
