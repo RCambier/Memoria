@@ -1,6 +1,8 @@
 import { Draggable } from "@hello-pangea/dnd";
 import type { Status, Task } from "@todos/sheet-core";
+import { useState } from "react";
 import { tagColorClass } from "../lib/tagColor.js";
+import { TaskForm, type TaskFormValues } from "./TaskForm.js";
 
 const STATUS_LABEL: Record<Status, string> = {
   backlog: "Backlog",
@@ -38,15 +40,22 @@ interface CardProps {
   isTouch: boolean;
   readOnly: boolean;
   onMove: (status: Status) => void;
+  onEdit: (patch: { title: string; notes: string; dueDate: string; tags: string[] }) => void;
   onDelete: () => void;
 }
 
-export function Card({ task, index, isTouch, readOnly, onMove, onDelete }: CardProps) {
+export function Card({ task, index, isTouch, readOnly, onMove, onEdit, onDelete }: CardProps) {
+  const [editing, setEditing] = useState(false);
   // Touch devices use tap-to-move instead: dragging a card and swiping the
   // mobile pager both start from a touchstart on the card, and letting the
   // DnD library claim that gesture would fight the horizontal swipe.
-  const dragDisabled = isTouch || readOnly;
+  const dragDisabled = isTouch || readOnly || editing;
   const otherStatuses = ALL_STATUSES.filter((s) => s !== task.status);
+
+  function handleSave(values: TaskFormValues): void {
+    setEditing(false);
+    onEdit(values);
+  }
 
   return (
     <Draggable draggableId={task.id} index={index} isDragDisabled={dragDisabled}>
@@ -61,6 +70,19 @@ export function Card({ task, index, isTouch, readOnly, onMove, onDelete }: CardP
             : provided.draggableProps.style?.transform,
         };
 
+        if (editing) {
+          return (
+            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+              <TaskForm
+                initial={{ title: task.title, notes: task.notes, dueDate: task.dueDate, tags: task.tags }}
+                submitLabel="Save"
+                onSubmit={handleSave}
+                onCancel={() => setEditing(false)}
+              />
+            </div>
+          );
+        }
+
         return (
           <div
             ref={provided.innerRef}
@@ -68,13 +90,22 @@ export function Card({ task, index, isTouch, readOnly, onMove, onDelete }: CardP
             style={style}
             {...provided.dragHandleProps}
             className={`card${task.status === "done" ? " done" : ""}${snapshot.isDragging ? " dragging" : ""}`}
+            onClick={readOnly ? undefined : () => setEditing(true)}
+            title={readOnly ? undefined : "Click to edit"}
           >
             <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
               <p className="title" style={{ flex: 1 }}>
                 {task.title}
               </p>
               {!readOnly && (
-                <button className="card-delete" aria-label={`Delete "${task.title}"`} onClick={onDelete}>
+                <button
+                  className="card-delete"
+                  aria-label={`Delete "${task.title}"`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                >
                   ×
                 </button>
               )}
@@ -101,7 +132,14 @@ export function Card({ task, index, isTouch, readOnly, onMove, onDelete }: CardP
             {isTouch && !readOnly && (
               <div className="move-actions">
                 {otherStatuses.map((s) => (
-                  <button key={s} type="button" onClick={() => onMove(s)}>
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMove(s);
+                    }}
+                  >
                     → {STATUS_LABEL[s]}
                   </button>
                 ))}

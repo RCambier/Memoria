@@ -19,10 +19,11 @@ interface BoardProps {
   readOnly: boolean;
   onAdd: (status: Status, input: NewTaskInput) => void;
   onMove: (id: string, status: Status, dropIndex: number) => void;
+  onEdit: (id: string, patch: { title: string; notes: string; dueDate: string; tags: string[] }) => void;
   onDelete: (id: string) => void;
 }
 
-export function Board({ tasks, readOnly, onAdd, onMove, onDelete }: BoardProps) {
+export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: BoardProps) {
   const isTouch = useIsTouch();
   const [activeMobileStatus, setActiveMobileStatus] = useState<Status>(DEFAULT_MOBILE_STATUS);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -106,6 +107,7 @@ export function Board({ tasks, readOnly, onAdd, onMove, onDelete }: BoardProps) 
               isTouch={isTouch}
               readOnly={readOnly}
               onAdd={(input) => onAdd(status, input)}
+              onEdit={onEdit}
               onMove={(id, s) => onMove(id, s, 0)}
               onDelete={onDelete}
             />

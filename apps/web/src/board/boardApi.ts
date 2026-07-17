@@ -83,7 +83,7 @@ export async function editTask(
   token: string,
   spreadsheetId: string,
   id: string,
-  patch: { title?: string; notes?: string },
+  patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] },
 ): Promise<Task> {
   const { tasks, rawRows } = await readRowsAndTasks(token, spreadsheetId);
   const current = tasks.find((t) => t.id === id);
@@ -93,6 +93,8 @@ export async function editTask(
     ...current,
     title: patch.title ?? current.title,
     notes: patch.notes ?? current.notes,
+    dueDate: patch.dueDate ?? current.dueDate,
+    tags: patch.tags ?? current.tags,
     updatedAt: new Date().toISOString(),
   };
   const rowNumber = locateRow(rawRows, id);

@@ -24,10 +24,21 @@ interface ColumnProps {
   panelRef: (el: HTMLDivElement | null) => void;
   onAdd: (input: NewTaskInput) => void;
   onMove: (id: string, status: Status) => void;
+  onEdit: (id: string, patch: { title: string; notes: string; dueDate: string; tags: string[] }) => void;
   onDelete: (id: string) => void;
 }
 
-export function Column({ status, tasks, isTouch, readOnly, panelRef, onAdd, onMove, onDelete }: ColumnProps) {
+export function Column({
+  status,
+  tasks,
+  isTouch,
+  readOnly,
+  panelRef,
+  onAdd,
+  onMove,
+  onEdit,
+  onDelete,
+}: ColumnProps) {
   const [composerOpen, setComposerOpen] = useState(false);
 
   return (
@@ -68,6 +79,7 @@ export function Column({ status, tasks, isTouch, readOnly, panelRef, onAdd, onMo
                 isTouch={isTouch}
                 readOnly={readOnly}
                 onMove={(s) => onMove(task.id, s)}
+                onEdit={(patch) => onEdit(task.id, patch)}
                 onDelete={() => onDelete(task.id)}
               />
             ))}

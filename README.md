@@ -6,8 +6,7 @@ server (for coding agents like Claude Code or Codex). Neither holds state —
 the sheet is the single source of truth, so your board, your agents, and
 Google Sheets itself are always looking at the same data.
 
-> _Screenshot coming soon — for the visual spec in the meantime, open
-> `docs/design/mockup.html` in a browser._
+![The Todos board — three columns, colored tags, due dates](docs/design/screenshot-light.png)
 
 No servers, no database, no stored user credentials. The web app is
 static files plus a stateless MCP endpoint; the only credential involved

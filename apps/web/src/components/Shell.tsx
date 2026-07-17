@@ -15,7 +15,7 @@ interface ShellProps {
 }
 
 export function Shell({ token, spreadsheetId, profile, onSignOut, onSwitchBoard }: ShellProps) {
-  const { state, lastSyncedAt, addTask, moveTask, deleteTask } = useBoard(token, spreadsheetId);
+  const { state, lastSyncedAt, addTask, updateTask, moveTask, deleteTask } = useBoard(token, spreadsheetId);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const readOnly = state.status !== "ready";
@@ -49,6 +49,7 @@ export function Shell({ token, spreadsheetId, profile, onSignOut, onSwitchBoard 
         readOnly={readOnly}
         onAdd={(status, input) => void addTask({ ...input, status })}
         onMove={(id, status, dropIndex) => void moveTask(id, status, dropIndex)}
+        onEdit={(id, patch) => void updateTask(id, patch)}
         onDelete={(id) => void deleteTask(id)}
       />
 

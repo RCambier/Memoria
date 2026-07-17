@@ -23,7 +23,10 @@ export interface UseBoardResult {
     dueDate?: string;
     tags?: string[];
   }) => Promise<void>;
-  updateTask: (id: string, patch: { title?: string; notes?: string }) => Promise<void>;
+  updateTask: (
+    id: string,
+    patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] },
+  ) => Promise<void>;
   /** Moves a task to `status`, inserting it at `dropIndex` among that column's other tasks. */
   moveTask: (id: string, status: Status, dropIndex: number) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -123,7 +126,7 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
   );
 
   const updateTask = useCallback(
-    async (id: string, patch: { title?: string; notes?: string }) => {
+    async (id: string, patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] }) => {
       if (!token || !spreadsheetId || stateRef.current.status !== "ready") return;
       const now = new Date().toISOString();
       const optimistic = stateRef.current.tasks.map((t) =>
