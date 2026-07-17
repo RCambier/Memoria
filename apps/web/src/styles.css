@@ -163,6 +163,10 @@ input {
   font-weight: 600;
   white-space: nowrap;
 }
+/* The "ia" — a quiet nod, in the brand's one accent green. */
+.wordmark-ia {
+  color: var(--status-done);
+}
 .board-tabs {
   display: flex;
   align-items: center;

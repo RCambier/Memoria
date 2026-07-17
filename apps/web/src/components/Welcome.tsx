@@ -10,7 +10,9 @@ export function Welcome({ error, onConnect }: WelcomeProps) {
       <span className="welcome-glyph" aria-hidden="true">
         M
       </span>
-      <h1>Memoria</h1>
+      <h1>
+        Memor<span className="wordmark-ia">ia</span>
+      </h1>
       <p className="welcome-tagline">A quiet memory for you and your agents — over a Google Sheet you own.</p>
 
       <div className="welcome-features">

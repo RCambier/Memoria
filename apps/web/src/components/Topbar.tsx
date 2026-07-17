@@ -152,7 +152,9 @@ export function Topbar({
         <span className="wordmark-glyph" aria-hidden="true">
           M
         </span>
-        <span className="wordmark-name">Memoria</span>
+        <span className="wordmark-name">
+          Memor<span className="wordmark-ia">ia</span>
+        </span>
       </div>
 
       {/* One tab per board this account can see; + opens the board shelf. */}
