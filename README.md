@@ -19,7 +19,7 @@ See `docs/ARCHITECTURE.md` for the full design.
 ## Two ways to use it
 
 **Just want a board?** Use a hosted instance — for example
-[todos-six-umber.vercel.app](https://todos-six-umber.vercel.app). Sign in
+[memoria-board.vercel.app](https://memoria-board.vercel.app). Sign in
 with Google, click **+ New board**, and you have a kanban board backed by a
 sheet in your own Drive. The app can only touch files it created or that
 you explicitly picked (`drive.file` scope) — never the rest of your Drive —
