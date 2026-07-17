@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { clearToken, requestToken } from "./auth/googleAuth.js";
 import { FirstRun } from "./components/FirstRun.js";
 import { Shell } from "./components/Shell.js";
+import { Welcome } from "./components/Welcome.js";
 import { assertConfigured } from "./config.js";
 import { clearCachedSpreadsheetId, getCachedSpreadsheetId, setCachedSpreadsheetId } from "./lib/storage.js";
 
@@ -69,18 +70,7 @@ export function App() {
   }
 
   if (!token) {
-    return (
-      <div className="first-run">
-        <div>
-          <h1>Todos</h1>
-          <p>A quiet kanban board over a Google Sheet you own. Nothing leaves your Drive.</p>
-        </div>
-        {authError && <div className="first-run-error">{authError}</div>}
-        <button className="btn-primary" onClick={() => void handleConnect()}>
-          Connect Google Drive
-        </button>
-      </div>
-    );
+    return <Welcome error={authError} onConnect={() => void handleConnect()} />;
   }
 
   if (!spreadsheetId) {
