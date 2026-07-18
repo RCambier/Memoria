@@ -119,13 +119,14 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
-        <div className="composer-spacer" />
-        <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
-          Cancel
-        </button>
-        <button type="button" className="btn-primary btn-sm" onClick={submit} disabled={!title.trim()}>
-          {submitLabel}
-        </button>
+        <div className="composer-buttons">
+          <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" className="btn-primary btn-sm" onClick={submit} disabled={!title.trim()}>
+            {submitLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

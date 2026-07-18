@@ -414,10 +414,16 @@ input {
 }
 .col-head .add:focus-visible,
 .top-link:focus-visible,
-.composer input:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+/* Composer fields are borderless inline inputs inside an already-outlined
+   card — a heavy per-field outline reads as a broken border, so focus there
+   is carried by the caret alone (matching the mockup). */
+.composer input:focus-visible,
+.composer textarea:focus-visible {
+  outline: none;
 }
 
 .stack {
@@ -629,10 +635,13 @@ button:focus-visible {
   border-color: var(--line-strong);
 }
 
+/* An editing surface, not an alert: hairline border + lift, instead of the
+   old 2px accent ring (harsh now that --accent is near-black). */
 .composer {
   background: var(--card);
   border-radius: 8px;
-  box-shadow: 0 0 0 2px var(--accent);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -689,12 +698,10 @@ button:focus-visible {
 .composer-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap; /* narrow column: buttons drop to their own row instead of escaping the card */
   gap: 8px;
   padding-top: 2px;
   border-top: 1px solid var(--line);
-}
-.composer-spacer {
-  flex: 1;
 }
 .composer-date {
   border: none;
@@ -705,11 +712,19 @@ button:focus-visible {
   padding: 4px 0;
   outline: none;
   width: auto;
+  min-width: 0;
+  flex: 0 1 auto;
   color-scheme: light dark;
+}
+.composer-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto; /* right-aligned on the shared row and after wrapping */
 }
 .btn-sm {
   padding: 5px 11px;
   font-size: 12.5px;
+  white-space: nowrap;
 }
 kbd {
   font-family: inherit;
