@@ -25,9 +25,11 @@ interface ColumnProps {
   onAdd: (input: NewTaskInput) => void;
   /** Opens the task detail dialog for a card in this column. */
   onOpen: (id: string, mode: TaskDetailMode) => void;
+  /** Marks a card done (moves it to the top of the Done column). */
+  onComplete: (id: string) => void;
 }
 
-export function Column({ status, tasks, readOnly, panelRef, onAdd, onOpen }: ColumnProps) {
+export function Column({ status, tasks, readOnly, panelRef, onAdd, onOpen, onComplete }: ColumnProps) {
   const [composerOpen, setComposerOpen] = useState(false);
 
   return (
@@ -67,6 +69,7 @@ export function Column({ status, tasks, readOnly, panelRef, onAdd, onOpen }: Col
                 index={index}
                 readOnly={readOnly}
                 onOpen={(mode) => onOpen(task.id, mode)}
+                onComplete={() => onComplete(task.id)}
               />
             ))}
             {provided.placeholder}

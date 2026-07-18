@@ -720,6 +720,10 @@ button:focus-visible {
   font-size: 12.5px;
   white-space: nowrap;
 }
+/* Generic flex gap-filler for action rows (composer, detail dialog). */
+.flex-spacer {
+  flex: 1;
+}
 kbd {
   font-family: inherit;
   font-size: 10.5px;
