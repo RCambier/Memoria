@@ -159,9 +159,10 @@ input {
   font-weight: 600;
   white-space: nowrap;
 }
-/* The "ia" — a quiet nod, in the brand's one accent green. */
+/* The "ia" — a different voice: italic at a lighter weight (design 4d, italic variant). */
 .wordmark-ia {
-  color: var(--status-done);
+  font-style: italic;
+  font-weight: 500;
 }
 .board-tabs {
   display: flex;
