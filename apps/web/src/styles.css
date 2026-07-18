@@ -1494,14 +1494,18 @@ kbd {
     justify-content: center;
     padding: 8px;
   }
-  /* 2a header: full brand (logo + name → board shelf); the tabs are desktop chrome. */
-  .board-tabs {
+  /* 2a header: in a board, the logo (→ board shelf) sits next to the board's
+     own name — the "Memoria" text yields the space. The shelf and welcome
+     pages keep the full brand; this only scopes the topbar. */
+  .board-tabs,
+  .topbar .wordmark-name {
     display: none;
   }
   .wordmark {
+    min-width: 38px;
     min-height: 38px;
-    gap: 7px;
-    padding: 0 6px 0 0;
+    justify-content: center;
+    padding: 0;
     margin: 0;
   }
   .mobile-board-name {

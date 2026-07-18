@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DriveFile } from "../api/drive.js";
 import type { UserProfile } from "../auth/googleAuth.js";
+import { useBackClose } from "../lib/useBackClose.js";
 import { useBoard } from "../board/useBoard.js";
 import { Board } from "./Board.js";
 import { MalformedBanner } from "./MalformedBanner.js";
@@ -28,6 +29,7 @@ export function Shell({
 }: ShellProps) {
   const { state, lastSyncedAt, addTask, updateTask, moveTask, deleteTask } = useBoard(token, spreadsheetId);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useBackClose(settingsOpen, () => setSettingsOpen(false));
 
   const readOnly = state.status !== "ready";
   const tasks = state.status === "ready" ? state.tasks : [];

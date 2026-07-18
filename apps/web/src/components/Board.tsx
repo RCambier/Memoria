@@ -2,6 +2,7 @@ import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { STATUSES, type Status, type Task } from "@memoria/sheet-core";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useBackClose } from "../lib/useBackClose.js";
 import { useIsMobile } from "../lib/useIsMobile.js";
 import { useVisualViewportHeight } from "../lib/useVisualViewportHeight.js";
 import { Column } from "./Column.js";
@@ -43,6 +44,9 @@ export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: Boar
   const isMobile = useIsMobile();
   const mobileComposerOpen = composerStatus !== null && isMobile;
   const overlayHeight = useVisualViewportHeight(mobileComposerOpen);
+  // Back closes overlays instead of leaving the app.
+  useBackClose(detail !== null, () => setDetail(null));
+  useBackClose(mobileComposerOpen, () => setComposerStatus(null));
   useEffect(() => {
     if (!mobileComposerOpen) return;
     const prev = document.body.style.overflow;

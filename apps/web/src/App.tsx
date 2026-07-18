@@ -12,10 +12,13 @@ import { FirstRun } from "./components/FirstRun.js";
 import { Shell } from "./components/Shell.js";
 import { Welcome } from "./components/Welcome.js";
 import { assertConfigured } from "./config.js";
-import { clearCachedSpreadsheetId, getCachedSpreadsheetId, setCachedSpreadsheetId } from "./lib/storage.js";
+import { getCachedSpreadsheetId, setCachedSpreadsheetId } from "./lib/storage.js";
 
 /** Refresh the access token this long before it actually expires. */
 const TOKEN_REFRESH_MARGIN_MS = 2 * 60 * 1000;
+
+/** The board shelf is a real history entry (`#boards`), so Back walks shelf ↔ board. */
+const SHELF_HASH = "#boards";
 
 export function App() {
   const [configError, setConfigError] = useState<string | null>(null);
@@ -29,6 +32,13 @@ export function App() {
   // falls back to the GIS popup, and sessions last one visit.
   const [popupMode, setPopupMode] = useState(false);
   const expiresAtRef = useRef<number | null>(null);
+  const [shelfOpen, setShelfOpen] = useState(() => window.location.hash === SHELF_HASH);
+
+  useEffect(() => {
+    const onHashChange = (): void => setShelfOpen(window.location.hash === SHELF_HASH);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const applySession = useCallback((session: SessionState, isBoot: boolean) => {
     switch (session.status) {
@@ -129,6 +139,11 @@ export function App() {
   function handleBoardReady(id: string): void {
     setCachedSpreadsheetId(id);
     setSpreadsheetId(id);
+    if (window.location.hash === SHELF_HASH) {
+      // Leave the shelf entry in history (Back returns to it) and show the board.
+      history.pushState(null, "", window.location.pathname + window.location.search);
+      setShelfOpen(false);
+    }
   }
 
   /** Signs out of this browser. The board stays cached — signing back in lands right on it. */
@@ -142,10 +157,9 @@ export function App() {
     setToken(null);
   }
 
-  /** Forgets the cached board (the sheet itself is untouched) and returns to the board shelf. */
+  /** Opens the board shelf as a history entry; the current board stays cached, Back returns to it. */
   function handleSwitchBoard(): void {
-    clearCachedSpreadsheetId();
-    setSpreadsheetId(null);
+    if (window.location.hash !== SHELF_HASH) window.location.hash = SHELF_HASH;
   }
 
   if (configError) {
@@ -169,7 +183,7 @@ export function App() {
     return <Welcome error={authError} onConnect={() => void handleConnect()} />;
   }
 
-  if (!spreadsheetId) {
+  if (!spreadsheetId || shelfOpen) {
     return <FirstRun token={token} onBoardReady={handleBoardReady} />;
   }
 
