@@ -578,6 +578,9 @@ button:focus-visible {
   position: relative;
   margin-left: auto;
   flex: 0 0 auto;
+  /* Flex, not block: a block wrapper's inline strut (16px × 1.5 = 24px) would
+     out-tall the 21px title line and pad the row. */
+  display: flex;
 }
 .card-menu-btn {
   border: none;
@@ -1629,6 +1632,9 @@ kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    /* The 36px tap target overhangs the title row instead of stretching it —
+       otherwise every card gets ~15px of dead space under a one-line title. */
+    margin: -8px -6px -8px 0;
   }
   .menu-item {
     min-height: 42px;
