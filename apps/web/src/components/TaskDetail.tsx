@@ -94,14 +94,20 @@ export function TaskDetail({
         aria-label={task.title}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="detail-grabber" aria-hidden="true" />
         <div className="detail-head">
           <span className={`status-pill ${STATUS_PILL_CLASS[task.status]}`}>
             <span className="sdot" />
             {STATUS_LABEL[task.status]}
           </span>
           <button className="detail-close" aria-label="Close" onClick={onClose}>
-            ×
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path
+                d="M1.5 1.5 10.5 10.5M10.5 1.5 1.5 10.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
 

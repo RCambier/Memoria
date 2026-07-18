@@ -1185,9 +1185,6 @@ kbd {
   gap: 12px;
   animation: detail-pop 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.05);
 }
-.detail-grabber {
-  display: none;
-}
 .detail-head {
   display: flex;
   align-items: center;
@@ -1195,16 +1192,18 @@ kbd {
 .detail-close {
   margin-left: auto;
   border: none;
-  background: transparent;
-  color: var(--ink-faint);
-  font-size: 18px;
-  line-height: 1;
+  background: var(--bg-subtle);
+  color: var(--ink-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
   cursor: pointer;
-  padding: 4px 9px;
-  border-radius: 6px;
 }
 .detail-close:hover {
-  background: var(--bg-subtle);
+  background: var(--line);
   color: var(--ink);
 }
 .detail-title {
@@ -1457,23 +1456,36 @@ kbd {
     padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
     animation: detail-rise 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
   }
-  .detail-grabber {
-    display: block;
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--line-strong);
-    margin: 0 auto 4px;
-  }
   .detail-close {
-    min-width: 40px;
-    min-height: 40px;
+    width: 36px;
+    height: 36px;
   }
   .composer input,
   .composer textarea,
   .settings-panel input[type="text"],
   .settings-panel input[type="email"] {
     font-size: 16px;
+  }
+  /* The in-column composer becomes a full-screen capture surface on mobile
+     (design 2c). Scoped to .stack so the edit form inside the task detail
+     sheet keeps its inline size. */
+  .stack .composer {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .stack .composer .composer-notes {
+    flex: 1;
+    min-height: 120px;
+  }
+  .stack .composer .composer-actions {
+    margin-top: auto;
   }
   .composer-tags .tag-input,
   .composer-date {
