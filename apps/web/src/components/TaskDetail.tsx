@@ -145,7 +145,11 @@ export function TaskDetail({ task, initialMode, readOnly, onClose, onSave, onDel
 
             {!readOnly && mode === "view" && (
               <div className="detail-actions">
-                <button type="button" className="btn-ghost btn-sm danger-text" onClick={() => setMode("confirm")}>
+                <button
+                  type="button"
+                  className="btn-ghost btn-sm danger-text"
+                  onClick={() => setMode("confirm")}
+                >
                   Delete…
                 </button>
                 <div className="composer-spacer" />
@@ -156,9 +160,7 @@ export function TaskDetail({ task, initialMode, readOnly, onClose, onSave, onDel
             )}
             {!readOnly && mode === "confirm" && (
               <div className="detail-confirm" role="alertdialog" aria-label="Confirm delete" ref={confirmRef}>
-                <p>
-                  Delete “{task.title}”? This can’t be undone.
-                </p>
+                <p>Delete “{task.title}”? This can’t be undone.</p>
                 <div className="detail-actions">
                   <div className="composer-spacer" />
                   <button type="button" className="btn-ghost btn-sm" onClick={() => setMode("view")}>
