@@ -1467,12 +1467,21 @@ kbd {
     font-size: 16px;
   }
   /* The in-column composer becomes a full-screen capture surface on mobile
-     (design 2c). Scoped to .stack so the edit form inside the task detail
-     sheet keeps its inline size. */
-  .stack .composer {
+     (design 2c). It is portaled to <body> (Column.tsx) — a fixed element
+     inside the board breaks on iOS once the keyboard opens — and the edit
+     form inside the task detail sheet keeps its inline size. */
+  .composer-overlay {
     position: fixed;
     inset: 0;
-    z-index: 30;
+    z-index: 40;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overscroll-behavior: contain;
+  }
+  .composer-overlay .composer {
+    flex: 1;
+    min-height: 0;
     border: none;
     border-radius: 0;
     box-shadow: none;
@@ -1480,11 +1489,11 @@ kbd {
     gap: 12px;
     overflow-y: auto;
   }
-  .stack .composer .composer-notes {
+  .composer-overlay .composer-notes {
     flex: 1;
     min-height: 120px;
   }
-  .stack .composer .composer-actions {
+  .composer-overlay .composer-actions {
     margin-top: auto;
   }
   .composer-tags .tag-input,
