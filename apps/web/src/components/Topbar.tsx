@@ -8,6 +8,10 @@ interface TopbarProps {
   spreadsheetId: string;
   boardStatus: BoardState["status"];
   lastSyncedAt: Date | null;
+  /** The sheet is unreachable; local changes queue until it's back. */
+  offline: boolean;
+  /** Local mutations not yet confirmed against the sheet. */
+  pendingCount: number;
   profile: UserProfile | null;
   /** All boards this account can see — rendered as tabs, current one active. */
   boards: DriveFile[];
@@ -17,8 +21,16 @@ interface TopbarProps {
   onSwitchBoard: () => void;
 }
 
-function syncLabel(status: BoardState["status"], lastSyncedAt: Date | null): string {
-  if (status === "error") return "Offline — retrying…";
+function syncLabel(
+  status: BoardState["status"],
+  lastSyncedAt: Date | null,
+  offline: boolean,
+  pendingCount: number,
+): string {
+  if (offline || status === "error") {
+    return pendingCount > 0 ? `Offline · ${pendingCount} queued` : "Offline — retrying…";
+  }
+  if (pendingCount > 0) return "Syncing…";
   if (!lastSyncedAt) return "Syncing…";
   const seconds = Math.max(0, Math.round((Date.now() - lastSyncedAt.getTime()) / 1000));
   if (seconds < 5) return "Synced · just now";
@@ -135,6 +147,8 @@ export function Topbar({
   spreadsheetId,
   boardStatus,
   lastSyncedAt,
+  offline,
+  pendingCount,
   profile,
   boards,
   onSelectBoard,
@@ -143,8 +157,8 @@ export function Topbar({
   onSwitchBoard,
 }: TopbarProps) {
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-  const offline = boardStatus === "error";
-  const label = syncLabel(boardStatus, lastSyncedAt);
+  const showOffline = offline || boardStatus === "error";
+  const label = syncLabel(boardStatus, lastSyncedAt, offline, pendingCount);
   const activeBoard = boards.find((b) => b.id === spreadsheetId);
 
   return (
@@ -193,7 +207,7 @@ export function Topbar({
       <span className="mobile-board-name">{activeBoard?.name ?? "Board"}</span>
 
       <div className="spacer" />
-      <div className={`sync${offline ? " offline" : ""}`} title={label} aria-label={label} role="status">
+      <div className={`sync${showOffline ? " offline" : ""}`} title={label} aria-label={label} role="status">
         <span className="dot" />
         <span className="sync-label">{label}</span>
       </div>

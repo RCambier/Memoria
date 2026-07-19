@@ -13,6 +13,7 @@ export { topSortOrder, betweenSortOrder, sortByOrder, boardOrder } from "./order
 export { taskToRow, rowToTask, parseTags, isBlankRow, RowValidationError } from "./serialize.js";
 export { parseSheet, type ParseResult, type SheetError } from "./parse.js";
 export type { SheetStore } from "./store.js";
+export { applyPending, enqueueOp, type PendingOp } from "./pending.js";
 export {
   addTask,
   appendTask,

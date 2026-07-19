@@ -1,6 +1,18 @@
-import { boardOrder, STATUSES, type SheetError, type Status, type Task } from "@memoria/sheet-core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  applyPending,
+  boardOrder,
+  enqueueOp,
+  MalformedSheetError,
+  STATUSES,
+  TaskNotFoundError,
+  type PendingOp,
+  type SheetError,
+  type Status,
+  type Task,
+} from "@memoria/sheet-core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { writeHeaderRow } from "../api/sheets.js";
+import { readOutbox, readReplica, writeOutbox, writeReplica, type PersistedReplica } from "../lib/storage.js";
 import * as boardApi from "./boardApi.js";
 import { computeDropSortOrder } from "./dropOrder.js";
 
@@ -16,6 +28,10 @@ export interface UseBoardResult {
   state: BoardState;
   /** When the last successful (or malformed-but-reachable) read completed. */
   lastSyncedAt: Date | null;
+  /** True while the sheet can't be reached; the board keeps working locally. */
+  offline: boolean;
+  /** Local mutations not yet confirmed against the sheet. */
+  pendingCount: number;
   addTask: (input: {
     title: string;
     notes?: string;
@@ -33,48 +49,200 @@ export interface UseBoardResult {
   refresh: () => Promise<void>;
 }
 
+/** One board's local-first state: the last server snapshot plus the pending-op queue. */
+interface LocalBoard {
+  boardId: string | null;
+  replica: PersistedReplica | null;
+  outbox: PendingOp[];
+}
+
+function loadLocal(boardId: string | null): LocalBoard {
+  if (!boardId) return { boardId, replica: null, outbox: [] };
+  return { boardId, replica: readReplica(boardId), outbox: readOutbox(boardId) };
+}
+
 /**
- * Owns board state for one spreadsheet: polls every 5s while the tab is
- * visible (paused when hidden, refreshed immediately on focus/visible), and
- * exposes optimistic mutations. Every mutation re-locates its row by task id
- * against a fresh read before writing (see board/boardApi.ts) — this hook
- * only ever updates local state ahead of that write, for a snappy UI.
+ * Owns board state for one spreadsheet, local-first:
+ *
+ * - The UI renders a **projection**: the last known server state (the
+ *   *replica*, persisted per board) with the pending local mutations (the
+ *   *outbox*, also persisted) applied on top — so every mutation is visible
+ *   instantly, a reload paints the board before any network round-trip, and
+ *   a stale poll can never clobber a local change.
+ * - Polls (every 5s while visible, plus focus/online) update only the
+ *   replica. A poll whose read started before a flush completed is
+ *   discarded (`syncEpoch`), so the projection never regresses.
+ * - A single-flight **flusher** drains the outbox in order through the
+ *   sheet-core board operations (fresh read → locate by id → write one
+ *   row). Network failure parks the queue — offline just means the outbox
+ *   grows until connectivity returns. Replay is safe: task ids are
+ *   client-generated, so an `add` whose row already landed is skipped, and
+ *   ops on remotely-deleted tasks are dropped.
  */
 export function useBoard(token: string | null, spreadsheetId: string | null): UseBoardResult {
-  const [state, setState] = useState<BoardState>({ status: "loading" });
+  const [local, setLocal] = useState<LocalBoard>(() => loadLocal(spreadsheetId));
+  const [malformed, setMalformed] = useState<SheetError | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
+
+  // Reset local state when the board changes — the render-time-with-guard
+  // pattern, so there is no frame where board A's state shows under board B.
+  if (local.boardId !== spreadsheetId) {
+    setLocal(loadLocal(spreadsheetId));
+    setMalformed(null);
+    setFetchError(null);
+    setLastSyncedAt(null);
+  }
+
+  // Latest values for async code (flusher, poll) without re-subscribing.
+  const localRef = useRef(local);
+  localRef.current = local;
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+  const malformedRef = useRef(malformed);
+  malformedRef.current = malformed;
+
+  const pollInFlight = useRef(false);
+  const flushing = useRef(false);
+  /** Bumped after every confirmed write; polls that predate a bump are discarded. */
+  const syncEpoch = useRef(0);
+  const upgradedHeader = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const upgradedHeader = useRef(false);
+  // Persist on every change, keyed by the board the state belongs to.
+  useEffect(() => {
+    if (!local.boardId) return;
+    if (local.replica) writeReplica(local.boardId, local.replica);
+    writeOutbox(local.boardId, local.outbox);
+  }, [local]);
 
-  const refresh = useCallback(async () => {
-    if (!token || !spreadsheetId) return;
+  const projection = useMemo(
+    () => (local.replica ? boardOrder(applyPending(local.replica.tasks, local.outbox), STATUSES) : null),
+    [local],
+  );
+  const projectionRef = useRef(projection);
+  projectionRef.current = projection;
+
+  /** Mutates the outbox for the current board only. */
+  const setOutbox = useCallback((boardId: string, ops: PendingOp[]) => {
+    setLocal((l) => (l.boardId === boardId ? { ...l, outbox: ops } : l));
+  }, []);
+
+  // flush → refresh would be a circular useCallback dependency; a ref breaks it.
+  const refreshRef = useRef<() => Promise<void>>(async () => {});
+
+  const flush = useCallback(async (): Promise<void> => {
+    if (flushing.current) return;
+    flushing.current = true;
+    let confirmedWrites = 0;
     try {
-      const result = await boardApi.fetchBoard(token, spreadsheetId);
-      setLastSyncedAt(new Date());
-      if (result.ok) {
-        setState({ status: "ready", tasks: boardOrder(result.tasks, STATUSES) });
-        // Older boards predate the due_date/tags columns. Extend the header
-        // row in place, once — purely additive; task rows are never touched.
-        if (result.legacyHeader && !upgradedHeader.current) {
-          upgradedHeader.current = true;
-          writeHeaderRow(token, spreadsheetId).catch(() => {
-            upgradedHeader.current = false;
-          });
+      for (;;) {
+        const t = tokenRef.current;
+        const boardId = localRef.current.boardId;
+        const op = localRef.current.outbox[0];
+        if (!t || !boardId || !op || malformedRef.current) break;
+
+        try {
+          if (op.kind === "add") {
+            // Replay guard: if a previous attempt landed (response lost, page
+            // reloaded), the id is already in the replica — don't append twice.
+            const landed = localRef.current.replica?.tasks.some((x) => x.id === op.task.id);
+            if (!landed) await boardApi.appendTask(t, boardId, op.task);
+          } else if (op.kind === "edit") {
+            await boardApi.editTask(t, boardId, op.id, op.patch);
+          } else if (op.kind === "move") {
+            await boardApi.relocateTask(t, boardId, op.id, op.status, op.sortOrder);
+          } else {
+            await boardApi.removeTask(t, boardId, op.id);
+          }
+          syncEpoch.current++;
+          confirmedWrites++;
+          setFetchError(null);
+        } catch (err) {
+          if (err instanceof TaskNotFoundError) {
+            // The target vanished remotely — drop the op; the sheet wins.
+          } else if (err instanceof MalformedSheetError) {
+            setMalformed(err.error);
+            break;
+          } else {
+            // Network or API failure — park the queue; 'online'/next poll retries.
+            setFetchError(err instanceof Error ? err.message : String(err));
+            break;
+          }
         }
+
+        // Confirmed (or dropped) — remove it. State updates on the next
+        // render; update the ref eagerly so this loop sees the shorter queue.
+        const rest = localRef.current.outbox.slice(1);
+        localRef.current = { ...localRef.current, outbox: rest };
+        setOutbox(boardId, rest);
+      }
+    } finally {
+      flushing.current = false;
+    }
+    // Reconcile immediately after a drain: pull the post-write server state
+    // into the replica (and its persisted copy) instead of waiting for the
+    // next poll — otherwise a reload in that window boots from a snapshot
+    // that predates the writes just confirmed.
+    if (confirmedWrites > 0 && localRef.current.outbox.length === 0) {
+      void refreshRef.current();
+    }
+  }, [setOutbox]);
+
+  const refresh = useCallback(async (): Promise<void> => {
+    const t = tokenRef.current;
+    const boardId = localRef.current.boardId;
+    if (!t || !boardId || pollInFlight.current) return;
+    pollInFlight.current = true;
+    const epochAtStart = syncEpoch.current;
+    let rerunStale = false;
+    try {
+      const result = await boardApi.fetchBoard(t, boardId);
+      if (localRef.current.boardId !== boardId) {
+        // Board switched mid-read — drop the snapshot.
+      } else if (syncEpoch.current !== epochAtStart) {
+        // A write landed while this read was in flight: the snapshot is
+        // stale AND the sheet has newer state — refetch below rather than
+        // waiting a poll interval.
+        rerunStale = true;
       } else {
-        setState({ status: "malformed", error: result.error });
+        setLastSyncedAt(new Date());
+        setFetchError(null);
+        if (result.ok) {
+          setMalformed(null);
+          const replica: PersistedReplica = {
+            tasks: result.tasks,
+            fetchedAt: new Date().toISOString(),
+          };
+          localRef.current = { ...localRef.current, replica };
+          setLocal((l) => (l.boardId === boardId ? { ...l, replica } : l));
+          // Older boards predate the due_date/tags columns. Extend the header
+          // row in place, once — purely additive; task rows are never touched.
+          if (result.legacyHeader && !upgradedHeader.current) {
+            upgradedHeader.current = true;
+            writeHeaderRow(t, boardId).catch(() => {
+              upgradedHeader.current = false;
+            });
+          }
+          if (localRef.current.outbox.length > 0) void flush();
+        } else {
+          setMalformed(result.error);
+        }
       }
     } catch (err) {
-      setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
+      setFetchError(err instanceof Error ? err.message : String(err));
+    } finally {
+      pollInFlight.current = false;
     }
-  }, [token, spreadsheetId]);
+    if (rerunStale) await refreshRef.current();
+  }, [flush]);
+  refreshRef.current = refresh;
 
+  // Poll while visible; refresh + flush on focus, visibility, and reconnect.
   useEffect(() => {
     if (!token || !spreadsheetId) return;
     void refresh();
+    void flush();
 
     function startPolling(): void {
       if (pollTimer.current) return;
@@ -96,85 +264,91 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
         startPolling();
       }
     }
+    function onFocus(): void {
+      void refresh();
+    }
+    function onOnline(): void {
+      void flush();
+      void refresh();
+    }
 
     startPolling();
     document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("focus", refresh);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("online", onOnline);
     return () => {
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("focus", refresh);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("online", onOnline);
     };
-  }, [token, spreadsheetId, refresh]);
+  }, [token, spreadsheetId, refresh, flush]);
+
+  /** Queues a local mutation and kicks the flusher. Instant — never awaits the network. */
+  const enqueue = useCallback(
+    (op: PendingOp) => {
+      const boardId = localRef.current.boardId;
+      if (!boardId) return;
+      const ops = enqueueOp(localRef.current.outbox, op);
+      localRef.current = { ...localRef.current, outbox: ops };
+      setOutbox(boardId, ops);
+      void flush();
+    },
+    [flush, setOutbox],
+  );
 
   const addTask = useCallback(
     async (input: { title: string; notes?: string; status: Status; dueDate?: string; tags?: string[] }) => {
-      if (!token || !spreadsheetId || stateRef.current.status !== "ready") return;
-      const columnOrders = stateRef.current.tasks
-        .filter((t) => t.status === input.status)
-        .map((t) => t.sortOrder);
-      const task = boardApi.buildNewTask(columnOrders, input);
-
-      setState({ status: "ready", tasks: boardOrder([...stateRef.current.tasks, task], STATUSES) });
-      try {
-        await boardApi.appendTask(token, spreadsheetId, task);
-      } catch {
-        await refresh();
-      }
+      const tasks = projectionRef.current;
+      if (!tasks) return;
+      const columnOrders = tasks.filter((t) => t.status === input.status).map((t) => t.sortOrder);
+      enqueue({ kind: "add", task: boardApi.buildNewTask(columnOrders, input) });
     },
-    [token, spreadsheetId, refresh],
+    [enqueue],
   );
 
   const updateTask = useCallback(
     async (id: string, patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] }) => {
-      if (!token || !spreadsheetId || stateRef.current.status !== "ready") return;
-      const now = new Date().toISOString();
-      const optimistic = stateRef.current.tasks.map((t) =>
-        t.id === id ? { ...t, ...patch, updatedAt: now } : t,
-      );
-      setState({ status: "ready", tasks: optimistic });
-      try {
-        await boardApi.editTask(token, spreadsheetId, id, patch);
-      } catch {
-        await refresh();
-      }
+      enqueue({ kind: "edit", id, patch, at: new Date().toISOString() });
     },
-    [token, spreadsheetId, refresh],
+    [enqueue],
   );
 
   const moveTask = useCallback(
     async (id: string, status: Status, dropIndex: number) => {
-      if (!token || !spreadsheetId || stateRef.current.status !== "ready") return;
-      const destColumn = stateRef.current.tasks.filter((t) => t.status === status && t.id !== id);
+      const tasks = projectionRef.current;
+      if (!tasks) return;
+      const destColumn = tasks.filter((t) => t.status === status && t.id !== id);
       const sortOrder = computeDropSortOrder(destColumn, dropIndex);
-      const now = new Date().toISOString();
-      const optimistic = boardOrder(
-        stateRef.current.tasks.map((t) => (t.id === id ? { ...t, status, sortOrder, updatedAt: now } : t)),
-        STATUSES,
-      );
-      setState({ status: "ready", tasks: optimistic });
-      try {
-        await boardApi.relocateTask(token, spreadsheetId, id, status, sortOrder);
-      } catch {
-        await refresh();
-      }
+      enqueue({ kind: "move", id, status, sortOrder, at: new Date().toISOString() });
     },
-    [token, spreadsheetId, refresh],
+    [enqueue],
   );
 
   const deleteTask = useCallback(
     async (id: string) => {
-      if (!token || !spreadsheetId || stateRef.current.status !== "ready") return;
-      const optimistic = stateRef.current.tasks.filter((t) => t.id !== id);
-      setState({ status: "ready", tasks: optimistic });
-      try {
-        await boardApi.removeTask(token, spreadsheetId, id);
-      } catch {
-        await refresh();
-      }
+      enqueue({ kind: "delete", id });
     },
-    [token, spreadsheetId, refresh],
+    [enqueue],
   );
 
-  return { state, lastSyncedAt, addTask, updateTask, moveTask, deleteTask, refresh };
+  const state: BoardState = malformed
+    ? { status: "malformed", error: malformed }
+    : projection
+      ? { status: "ready", tasks: projection }
+      : fetchError
+        ? { status: "error", message: fetchError }
+        : { status: "loading" };
+
+  return {
+    state,
+    lastSyncedAt,
+    offline: fetchError !== null,
+    pendingCount: local.outbox.length,
+    addTask,
+    updateTask,
+    moveTask,
+    deleteTask,
+    refresh,
+  };
 }

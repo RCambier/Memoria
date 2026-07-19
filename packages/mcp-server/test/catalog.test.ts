@@ -6,7 +6,7 @@ import {
   type BoardCatalog,
   type BoardInfo,
 } from "../src/catalog.js";
-import type { SheetStore } from "../src/sheetStore.js";
+import type { SheetStore } from "@memoria/sheet-core";
 
 function fakeStore(id: string): SheetStore {
   return {

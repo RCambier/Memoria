@@ -12,7 +12,7 @@ import { FirstRun } from "./components/FirstRun.js";
 import { Shell } from "./components/Shell.js";
 import { Welcome } from "./components/Welcome.js";
 import { assertConfigured } from "./config.js";
-import { getCachedSpreadsheetId, setCachedSpreadsheetId } from "./lib/storage.js";
+import { getCachedSpreadsheetId, readReplica, setCachedSpreadsheetId } from "./lib/storage.js";
 
 /** Refresh the access token this long before it actually expires. */
 const TOKEN_REFRESH_MARGIN_MS = 2 * 60 * 1000;
@@ -31,6 +31,9 @@ export function App() {
   // True on deployments without the auth backend (see docs/SETUP.md): sign-in
   // falls back to the GIS popup, and sessions last one visit.
   const [popupMode, setPopupMode] = useState(false);
+  // Session restore failed for network-ish reasons (not "signed out") —
+  // offline boots keep showing the cached board instead of a sign-in wall.
+  const [sessionUnreachable, setSessionUnreachable] = useState(false);
   const expiresAtRef = useRef<number | null>(null);
   const [shelfOpen, setShelfOpen] = useState(() => window.location.hash === SHELF_HASH);
 
@@ -45,10 +48,12 @@ export function App() {
       case "ok":
         expiresAtRef.current = session.expiresAt;
         setToken(session.token);
+        setSessionUnreachable(false);
         break;
       case "signed_out":
         expiresAtRef.current = null;
         setToken(null);
+        setSessionUnreachable(false);
         break;
       case "unavailable":
         setPopupMode(true);
@@ -56,7 +61,10 @@ export function App() {
       case "error":
         // Mid-session, the current token may well outlive a transient blip —
         // keep it. On boot there is nothing to keep; surface the message.
-        if (isBoot) setAuthError(session.message);
+        if (isBoot) {
+          setAuthError(session.message);
+          setSessionUnreachable(true);
+        }
         break;
     }
   }, []);
@@ -98,6 +106,16 @@ export function App() {
       .then((session) => applySession(session, true))
       .finally(() => setAuthBusy(false));
   }, [applySession]);
+
+  // An offline boot leaves the session unrestored — retry when connectivity returns.
+  useEffect(() => {
+    if (!sessionUnreachable) return;
+    const retry = (): void => {
+      void fetchSession().then((session) => applySession(session, true));
+    };
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [sessionUnreachable, applySession]);
 
   // Keep the token fresh: renew it shortly before expiry, and immediately
   // when the tab comes back after being hidden past that point.
@@ -172,6 +190,22 @@ export function App() {
   }
 
   if (authBusy) {
+    // Paint the last known board instantly while the session restores in the
+    // background — the local replica needs no network, and any mutations made
+    // in the meantime queue in the outbox until the token arrives.
+    if (spreadsheetId && !shelfOpen && readReplica(spreadsheetId)) {
+      return (
+        <Shell
+          token={null}
+          spreadsheetId={spreadsheetId}
+          profile={null}
+          boards={boards}
+          onSelectBoard={handleBoardReady}
+          onSignOut={handleSignOut}
+          onSwitchBoard={handleSwitchBoard}
+        />
+      );
+    }
     return (
       <div className="first-run">
         <p>Loading…</p>
@@ -180,6 +214,22 @@ export function App() {
   }
 
   if (!token) {
+    // Offline boot with a local board: show it (mutations queue) — a sign-in
+    // wall would be useless without a network anyway.
+    if (sessionUnreachable && spreadsheetId && !shelfOpen && readReplica(spreadsheetId)) {
+      return (
+        <Shell
+          token={null}
+          sessionOffline
+          spreadsheetId={spreadsheetId}
+          profile={null}
+          boards={boards}
+          onSelectBoard={handleBoardReady}
+          onSignOut={handleSignOut}
+          onSwitchBoard={handleSwitchBoard}
+        />
+      );
+    }
     return <Welcome error={authError} onConnect={() => void handleConnect()} />;
   }
 

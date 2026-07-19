@@ -81,9 +81,18 @@ React + TypeScript + Vite static SPA. No backend of any kind.
      headers; valid headers → attach; anything else → refuse with a clear
      message.
 - The chosen spreadsheet ID is cached in `localStorage`.
-- **Sync**: poll the sheet every 5 s while the tab is visible (pause when
-  hidden, refresh immediately on focus). Mutations are optimistic: apply to
-  local state, write to the sheet, reconcile on next poll. Last write wins.
+- **Sync — local-first**: the UI renders a *projection*: the last known
+  server state (the **replica**, persisted per board in `localStorage`)
+  with the queue of pending local mutations (the **outbox**, also
+  persisted) applied on top (`sheet-core`'s `applyPending`). Mutations are
+  instant and never await the network; a reload paints the board from the
+  replica before any request; offline just means the outbox grows. A
+  single-flight flusher drains ops in order through the sheet-core board
+  operations, dropping ops whose target vanished remotely (the sheet wins)
+  and skipping an `add` whose client-generated id already landed (replay
+  safety). Polls (every 5 s while visible, plus focus/online) update only
+  the replica; a poll that raced a confirmed write is discarded and
+  re-fetched, so the projection never regresses. Last write wins.
 - **Writes are row-targeted**: to mutate a task, re-locate its row by task
   `id` in the freshest read, then write exactly that row. Never write the
   whole grid. Appends go through the Sheets `append` API.
@@ -256,8 +265,9 @@ acceptable, and version history exists.
 - **No broad OAuth scopes** — `drive.file` plus basic profile only; the app
   cannot see the rest of the user's Drive, which is the right trust posture
   for a public reusable project.
-- **No offline queue / CRDTs / realtime collab** — single user,
-  last-write-wins.
+- **No CRDTs / realtime collab** — single user, last-write-wins; the
+  replica + outbox scheme (see *Sync*) covers offline and instant edits
+  without them.
 
 ## Repo layout & tooling
 

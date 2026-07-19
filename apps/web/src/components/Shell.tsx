@@ -9,7 +9,10 @@ import { SettingsPanel } from "./SettingsPanel.js";
 import { Topbar } from "./Topbar.js";
 
 interface ShellProps {
-  token: string;
+  /** Null while the session is still being restored — the board renders from cache and mutations queue. */
+  token: string | null;
+  /** True when the session couldn't be restored for network reasons (offline boot). */
+  sessionOffline?: boolean;
   spreadsheetId: string;
   profile: UserProfile | null;
   boards: DriveFile[];
@@ -20,6 +23,7 @@ interface ShellProps {
 
 export function Shell({
   token,
+  sessionOffline = false,
   spreadsheetId,
   profile,
   boards,
@@ -27,7 +31,10 @@ export function Shell({
   onSignOut,
   onSwitchBoard,
 }: ShellProps) {
-  const { state, lastSyncedAt, addTask, updateTask, moveTask, deleteTask } = useBoard(token, spreadsheetId);
+  const { state, lastSyncedAt, offline, pendingCount, addTask, updateTask, moveTask, deleteTask } = useBoard(
+    token,
+    spreadsheetId,
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   useBackClose(settingsOpen, () => setSettingsOpen(false));
 
@@ -40,6 +47,8 @@ export function Shell({
         spreadsheetId={spreadsheetId}
         boardStatus={state.status}
         lastSyncedAt={lastSyncedAt}
+        offline={offline || sessionOffline}
+        pendingCount={pendingCount}
         profile={profile}
         boards={boards}
         onSelectBoard={onSelectBoard}
