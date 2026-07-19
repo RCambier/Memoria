@@ -96,10 +96,10 @@ React + TypeScript + Vite static SPA. No backend of any kind.
 - **Build-time config** (public by design, via Vite env vars):
   `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` (Picker only).
 
-### `packages/sheet-core` — shared schema and validation
+### `packages/sheet-core` — schema, validation, and the board operations
 
-Dependency-free TypeScript. The single definition of what a valid sheet is.
-Used by both other packages. Exports:
+Dependency-free TypeScript. The single definition of what a valid sheet is
+**and of the safe mutations on it**. Used by both other packages. Exports:
 
 - `Task` type and `Status` enum (`backlog` | `in_progress` | `done`).
 - `HEADERS`, sheet/tab name constants.
@@ -108,14 +108,25 @@ Used by both other packages. Exports:
 - `taskToRow(task)` / `rowToTask(row)` serialization.
 - Ordering helpers (see _Ordering_ below).
 - ID generation (crypto-random, URL-safe, e.g. 12-char base62).
+- `SheetStore` — the four-method interface (read/append/update/delete rows)
+  a sheet backend must satisfy, transport-free. One HTTP adapter
+  (`apps/web/src/api/sheetStore.ts`) serves both the web app and the hosted
+  connector; tests use an in-memory fake.
+- The board operations (`listTasks`, `addTask`, `updateTask`, `moveTask`,
+  `completeTask`, `deleteTask`, `fetchBoard`) — the ONE implementation of
+  the write-safety invariant both clients rely on: every mutation does a
+  fresh read, validates it, re-locates its row by task id, and touches
+  exactly that row. The web app and the MCP tools call these same
+  functions, differing only in the `SheetStore` adapter and the `source`
+  stamped on new tasks.
 
 ### `packages/mcp-server` — the board tools
 
-Node + TypeScript, transport-free: it defines the MCP tools and the two
-interfaces they run against — `SheetStore` (one board's rows) and
-`BoardCatalog` (which boards exist, and a `SheetStore` for any of them) —
-and nothing else. The hosted connector (next section) mounts them over
-Streamable HTTP; tests run them against in-memory fakes.
+Node + TypeScript, transport-free: it wraps the sheet-core board operations
+as MCP tools and defines `BoardCatalog` (which boards exist, and a
+`SheetStore` for any of them) — and nothing else. The hosted connector
+(next section) mounts the tools over Streamable HTTP; tests run them
+against in-memory fakes.
 
 Every task tool takes an optional `board_id` (from `list_boards`), resolved
 by one shared rule (`resolveBoard`): an explicit `board_id` wins and skips
@@ -253,8 +264,8 @@ acceptable, and version history exists.
 ```
 apps/web              React + TS + Vite SPA (@hello-pangea/dnd for drag & drop)
 apps/web/api          optional hosted MCP connector (Vercel Functions, mcp-handler)
-packages/sheet-core   shared schema/validation (no runtime deps)
-packages/mcp-server   the MCP board tools, transport-free (@modelcontextprotocol/sdk)
+packages/sheet-core   schema/validation + SheetStore + board ops (no runtime deps)
+packages/mcp-server   the MCP tool wrappers, transport-free (@modelcontextprotocol/sdk)
 docs/                 this file, SETUP.md, design/
 ```
 
@@ -262,6 +273,12 @@ npm workspaces (no extra workspace tooling). Vitest for tests —
 `sheet-core` is tested exhaustively (it guards user data); the other
 packages get focused tests where logic warrants. GitHub Actions CI:
 typecheck, lint, test, build. Vercel deploys `apps/web` from `main`.
+
+For UI changes, `apps/web/verify.html` is a committed dev-only harness: it
+mounts the real App with every network call stubbed (auth session, Drive
+listing, Sheets grid), so the full signed-in flow can be driven end-to-end
+in a browser without Google. Vite serves it in dev; the production build
+ignores it.
 
 ## Design
 

@@ -1,127 +1,66 @@
 import {
-  generateId,
-  parseSheet,
-  taskToRow,
-  topSortOrder,
+  appendTask as appendTaskOp,
+  buildTask,
+  deleteTask,
+  fetchBoard as fetchBoardOp,
+  moveTask,
+  updateTask,
   type ParseResult,
-  type Source,
   type Status,
   type Task,
 } from "@memoria/sheet-core";
-import { appendRow, deleteRow, getValues, updateRow } from "../api/sheets.js";
+import { HttpSheetStore } from "../api/sheetStore.js";
 
-/** No row with the given task id was found in the freshest read. */
-export class TaskNotFoundError extends Error {
-  constructor(id: string) {
-    super(`That task was changed or removed elsewhere (id ${id} not found). Refreshing…`);
-  }
-}
+/**
+ * Thin (token, spreadsheetId) façade over the sheet-core board operations —
+ * the write-safety invariant itself (fresh read → validate → locate row by
+ * id → touch one row) lives in `@memoria/sheet-core`, shared verbatim with
+ * the MCP tools.
+ */
 
-async function readRowsAndTasks(
-  token: string,
-  spreadsheetId: string,
-): Promise<{ tasks: Task[]; rawRows: string[][] }> {
-  const rawRows = await getValues(token, spreadsheetId);
-  const result = parseSheet(rawRows);
-  if (!result.ok) throw new MalformedError(result);
-  return { tasks: result.tasks, rawRows };
-}
-
-/** Carries the precise `sheet-core` validation error alongside a display-ready message. */
-export class MalformedError extends Error {
-  constructor(public readonly result: Extract<ParseResult, { ok: false }>) {
-    super(result.error.message);
-  }
-}
-
-function locateRow(rawRows: string[][], id: string): number {
-  for (let i = 1; i < rawRows.length; i++) {
-    if ((rawRows[i]?.[0] ?? "").trim() === id) return i + 1;
-  }
-  throw new TaskNotFoundError(id);
+function store(token: string, spreadsheetId: string): HttpSheetStore {
+  return new HttpSheetStore(token, spreadsheetId);
 }
 
 /** Reads and validates the whole board. Never throws for a malformed sheet — check `result.ok`. */
-export async function fetchBoard(token: string, spreadsheetId: string): Promise<ParseResult> {
-  const rawRows = await getValues(token, spreadsheetId);
-  return parseSheet(rawRows);
+export function fetchBoard(token: string, spreadsheetId: string): Promise<ParseResult> {
+  return fetchBoardOp(store(token, spreadsheetId));
 }
 
-/** Pure: builds the `Task` object for a new task, given the sort orders already in its column. */
+/** Pure: builds the `Task` object for a new user-created task (the optimistic-UI path). */
 export function buildNewTask(
   columnOrders: readonly number[],
   input: { title: string; notes?: string; status: Status; dueDate?: string; tags?: string[] },
-  source: Source = "user",
 ): Task {
-  const now = new Date().toISOString();
-  return {
-    id: generateId(),
-    title: input.title,
-    status: input.status,
-    sortOrder: topSortOrder(columnOrders),
-    notes: input.notes ?? "",
-    source,
-    createdAt: now,
-    updatedAt: now,
-    dueDate: input.dueDate ?? "",
-    tags: input.tags ?? [],
-  };
+  return buildTask(columnOrders, input, "user");
 }
 
 /** Appends a newly built task as a new row. */
-export async function appendTask(token: string, spreadsheetId: string, task: Task): Promise<void> {
-  await appendRow(token, spreadsheetId, taskToRow(task));
+export function appendTask(token: string, spreadsheetId: string, task: Task): Promise<void> {
+  return appendTaskOp(store(token, spreadsheetId), task);
 }
 
-/**
- * Edits a task's title/notes. Re-locates the row by id in a fresh read
- * first, and merges the patch onto the freshest known fields — never onto
- * a possibly-stale local copy — so a concurrent edit elsewhere is only
- * ever overwritten in the one field this client actually changed.
- */
-export async function editTask(
+/** Edits a task's fields; merges the patch onto the freshest read, never a stale local copy. */
+export function editTask(
   token: string,
   spreadsheetId: string,
   id: string,
   patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] },
 ): Promise<Task> {
-  const { tasks, rawRows } = await readRowsAndTasks(token, spreadsheetId);
-  const current = tasks.find((t) => t.id === id);
-  if (!current) throw new TaskNotFoundError(id);
-
-  const updated: Task = {
-    ...current,
-    title: patch.title ?? current.title,
-    notes: patch.notes ?? current.notes,
-    dueDate: patch.dueDate ?? current.dueDate,
-    tags: patch.tags ?? current.tags,
-    updatedAt: new Date().toISOString(),
-  };
-  const rowNumber = locateRow(rawRows, id);
-  await updateRow(token, spreadsheetId, rowNumber, taskToRow(updated));
-  return updated;
+  return updateTask(store(token, spreadsheetId), id, patch);
 }
 
-/** Moves a task to `status` at `sortOrder` (computed by the caller from local column order). */
-export async function relocateTask(
+/** Moves a task to `status` at `sortOrder` (computed by the caller from the drop position). */
+export function relocateTask(
   token: string,
   spreadsheetId: string,
   id: string,
   status: Status,
   sortOrder: number,
 ): Promise<Task> {
-  const { tasks, rawRows } = await readRowsAndTasks(token, spreadsheetId);
-  const current = tasks.find((t) => t.id === id);
-  if (!current) throw new TaskNotFoundError(id);
-
-  const updated: Task = { ...current, status, sortOrder, updatedAt: new Date().toISOString() };
-  const rowNumber = locateRow(rawRows, id);
-  await updateRow(token, spreadsheetId, rowNumber, taskToRow(updated));
-  return updated;
+  return moveTask(store(token, spreadsheetId), id, status, sortOrder);
 }
 
-export async function removeTask(token: string, spreadsheetId: string, id: string): Promise<void> {
-  const { rawRows } = await readRowsAndTasks(token, spreadsheetId);
-  const rowNumber = locateRow(rawRows, id);
-  await deleteRow(token, spreadsheetId, rowNumber);
+export function removeTask(token: string, spreadsheetId: string, id: string): Promise<void> {
+  return deleteTask(store(token, spreadsheetId), id);
 }

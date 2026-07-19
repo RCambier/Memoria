@@ -5,20 +5,29 @@ description: Build, run, and drive the Memoria web app to verify board/card UI c
 
 # Verifying @memoria/web UI changes
 
-The real app needs Google auth + a Sheets backend, so board UI changes are
-verified against a harness page that mounts the real `Board` component with
-in-memory tasks inside the real Vite dev server.
+The real app needs Google auth + a Sheets backend, so UI changes are verified
+against the **committed** harness page `apps/web/verify.html` +
+`src/verify-main.tsx`: it mounts the REAL `App` with every network call
+stubbed (session, userinfo, Drive listing, Sheets grid) — auth, the board
+shelf, and board flows all work end-to-end without Google. Dev-only: vite
+serves it, the production build ignores it.
 
 ## Recipe
 
 1. `npm install` at the repo root (runs `prepare`, which builds `sheet-core`).
-2. Create two temporary files (delete them before committing):
-   - `apps/web/verify.html` — copy of `index.html` pointing at `/src/verify-main.tsx`.
-   - `apps/web/src/verify-main.tsx` — mounts `<Board>` with sample `Task`s and a
-     stateful `onMove` that records calls on `window.__moves` for assertions.
-3. `cd apps/web && npx vite --port 5199 --strictPort` (background).
-4. Drive with `playwright-core` (install in the scratchpad; launch the
-   pre-installed browser at `/opt/pw-browsers/.../chrome` via `executablePath`).
+2. `cd apps/web && VITE_GOOGLE_CLIENT_ID=harness VITE_GOOGLE_API_KEY=harness npx vite --port 5199 --strictPort`
+   (background), then open `http://localhost:5199/verify.html`. The dummy env
+   satisfies the config check without a `.env`; a dev server already running
+   with real credentials works just as well.
+3. Drive with `playwright-core` (install in the scratchpad; launch the
+   pre-installed browser via `executablePath` — on macOS
+   `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`).
+4. Need a different fixture (extra boards, malformed sheet, 401s)? Edit
+   `src/verify-main.tsx`'s stubbed fetch — but return it to the standard
+   fixture before committing, or commit the improvement deliberately.
+
+Sheets writes are accepted and dropped (the next 5s poll re-serves the same
+grid) — assert on intercepted calls or optimistic state, not persistence.
 
 ## Gotchas
 

@@ -1,4 +1,4 @@
-import type { SheetStore } from "./sheetStore.js";
+import type { SheetStore } from "@memoria/sheet-core";
 
 /** A board as the catalog sees it: identity plus enough metadata to pick one. */
 export interface BoardInfo {

@@ -1,8 +1,8 @@
-import { HEADERS } from "@memoria/sheet-core";
 import { beforeEach, describe, expect, it } from "vitest";
 import * as board from "../src/board.js";
 import { MalformedSheetError, TaskNotFoundError } from "../src/board.js";
-import type { SheetStore } from "../src/sheetStore.js";
+import { HEADERS } from "../src/headers.js";
+import type { SheetStore } from "../src/store.js";
 
 /** In-memory fake of the Sheets API surface board.ts depends on. */
 class FakeSheetStore implements SheetStore {
@@ -68,9 +68,9 @@ describe("listTasks", () => {
 });
 
 describe("addTask", () => {
-  it("inserts at the top of the target column with source=agent", async () => {
+  it("inserts at the top of the target column, stamping the given source", async () => {
     const store = new FakeSheetStore([row("b1", "Existing", "backlog", 5)]);
-    const task = await board.addTask(store, { title: "New task" });
+    const task = await board.addTask(store, { title: "New task" }, "agent");
     expect(task.status).toBe("backlog");
     expect(task.source).toBe("agent");
     expect(task.sortOrder).toBeLessThan(5);
@@ -79,20 +79,20 @@ describe("addTask", () => {
 
   it("defaults to backlog when no status is given", async () => {
     const store = new FakeSheetStore();
-    const task = await board.addTask(store, { title: "New task" });
+    const task = await board.addTask(store, { title: "New task" }, "agent");
     expect(task.status).toBe("backlog");
     expect(task.sortOrder).toBe(0);
   });
 
   it("respects an explicit status", async () => {
     const store = new FakeSheetStore();
-    const task = await board.addTask(store, { title: "New task", status: "in_progress" });
+    const task = await board.addTask(store, { title: "New task", status: "in_progress" }, "agent");
     expect(task.status).toBe("in_progress");
   });
 
   it("defaults notes to empty string", async () => {
     const store = new FakeSheetStore();
-    const task = await board.addTask(store, { title: "New task" });
+    const task = await board.addTask(store, { title: "New task" }, "agent");
     expect(task.notes).toBe("");
   });
 });
@@ -170,7 +170,7 @@ describe("readValidTasks via listTasks — round trip through real serialization
   });
 
   it("add then list then move then complete then delete works end to end", async () => {
-    const created = await board.addTask(store, { title: "Ship it", notes: "carefully" });
+    const created = await board.addTask(store, { title: "Ship it", notes: "carefully" }, "agent");
     let tasks = await board.listTasks(store);
     expect(tasks).toHaveLength(1);
 

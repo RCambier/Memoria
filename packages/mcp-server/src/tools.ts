@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import * as board from "@memoria/sheet-core";
 import { STATUSES, type Task } from "@memoria/sheet-core";
 import { z } from "zod";
-import * as board from "./board.js";
 import { resolveBoard, type BoardCatalog } from "./catalog.js";
 
 const statusSchema = z.enum(STATUSES);
@@ -95,7 +95,7 @@ export function registerTools(server: McpServer, catalog: BoardCatalog): void {
     async ({ board_id, title, notes, status, due_date, tags }) => {
       try {
         const client = await resolveBoard(catalog, board_id);
-        const task = await board.addTask(client, { title, notes, status, dueDate: due_date, tags });
+        const task = await board.addTask(client, { title, notes, status, dueDate: due_date, tags }, "agent");
         return { content: [{ type: "text", text: taskText(task) }] };
       } catch (err) {
         return errorResult(err);

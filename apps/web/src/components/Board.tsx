@@ -2,18 +2,13 @@ import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { STATUSES, type Status, type Task } from "@memoria/sheet-core";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { STATUS_LABEL } from "../lib/statusMeta.js";
 import { useBackClose } from "../lib/useBackClose.js";
 import { useIsMobile } from "../lib/useIsMobile.js";
 import { useVisualViewportHeight } from "../lib/useVisualViewportHeight.js";
 import { Column } from "./Column.js";
 import { Composer, type NewTaskInput } from "./Composer.js";
 import { TaskDetail, type TaskDetailMode } from "./TaskDetail.js";
-
-const STATUS_LABEL: Record<Status, string> = {
-  backlog: "Backlog",
-  in_progress: "In progress",
-  done: "Done",
-};
 
 /** The panel shown by default on mobile load — the column most people care about day to day. */
 const DEFAULT_MOBILE_STATUS: Status = "in_progress";

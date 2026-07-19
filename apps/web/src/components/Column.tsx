@@ -1,20 +1,10 @@
 import { Droppable } from "@hello-pangea/dnd";
 import type { Status, Task } from "@memoria/sheet-core";
+import { STATUS_LABEL, STATUS_PILL_CLASS } from "../lib/statusMeta.js";
 import { useIsMobile } from "../lib/useIsMobile.js";
 import { Card } from "./Card.js";
 import { Composer, type NewTaskInput } from "./Composer.js";
 import type { TaskDetailMode } from "./TaskDetail.js";
-
-const STATUS_LABEL: Record<Status, string> = {
-  backlog: "Backlog",
-  in_progress: "In progress",
-  done: "Done",
-};
-const STATUS_PILL_CLASS: Record<Status, string> = {
-  backlog: "pill-backlog",
-  in_progress: "pill-progress",
-  done: "pill-done",
-};
 
 interface ColumnProps {
   status: Status;

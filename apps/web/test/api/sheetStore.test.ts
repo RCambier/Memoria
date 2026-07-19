@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { findBoards, RemoteBoardCatalog, RemoteSheetStore } from "../../api/_lib/sheetStore.js";
+import { RemoteBoardCatalog } from "../../api/_lib/sheetStore.js";
+import { findBoards } from "../../src/api/drive.js";
+import { HttpSheetStore } from "../../src/api/sheetStore.js";
 
 function jsonResponse(body: unknown, ok = true): Response {
   return new Response(JSON.stringify(body), { status: ok ? 200 : 404 });
@@ -52,12 +54,12 @@ describe("findBoards", () => {
   });
 });
 
-describe("RemoteSheetStore", () => {
+describe("HttpSheetStore", () => {
   it("reads from the spreadsheet it was bound to, with no Drive call", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ values: [["id", "title"]] }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const store = new RemoteSheetStore("test-token", "sheet-xyz");
+    const store = new HttpSheetStore("test-token", "sheet-xyz");
     await store.readRows();
 
     const urls = fetchMock.mock.calls.map((call: unknown[]) => call[0] as string);

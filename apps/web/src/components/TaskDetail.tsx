@@ -1,22 +1,12 @@
-import type { Status, Task } from "@memoria/sheet-core";
+import type { Task } from "@memoria/sheet-core";
 import { useEffect, useRef, useState } from "react";
 import { formatDueDateLong, formatFullDate, isOverdue } from "../lib/dates.js";
+import { STATUS_LABEL, STATUS_PILL_CLASS } from "../lib/statusMeta.js";
 import { tagColorClass } from "../lib/tagColor.js";
 import { TaskForm, type TaskFormValues } from "./TaskForm.js";
 
 /** What the dialog opens onto: reading, editing, or confirming a delete. */
 export type TaskDetailMode = "view" | "edit" | "confirm";
-
-const STATUS_LABEL: Record<Status, string> = {
-  backlog: "Backlog",
-  in_progress: "In progress",
-  done: "Done",
-};
-const STATUS_PILL_CLASS: Record<Status, string> = {
-  backlog: "pill-backlog",
-  in_progress: "pill-progress",
-  done: "pill-done",
-};
 
 interface TaskDetailProps {
   task: Task;
