@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /** One piece of a linkified text: either plain text or an http(s) URL. */
-export interface TextSegment {
+interface TextSegment {
   kind: "text" | "link";
   value: string;
 }

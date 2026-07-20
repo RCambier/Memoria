@@ -9,7 +9,7 @@ import type { GTaskLite, MirrorOp } from "./mirrorDiff.js";
  */
 
 const BASE = "https://tasks.googleapis.com/tasks/v1";
-export const MEMORIA_LIST_TITLE = "Memoria";
+const MEMORIA_LIST_TITLE = "Memoria";
 
 interface TaskListsResponse {
   items?: { id: string; title: string }[];

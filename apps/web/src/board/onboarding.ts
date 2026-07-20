@@ -42,8 +42,7 @@ export async function createCollection(token: string, title: string, kind: Colle
   return spreadsheetId;
 }
 
-export type AttachOutcome =
-  { kind: "attached" } | { kind: "bootstrapped" } | { kind: "refused"; reason: string };
+type AttachOutcome = { kind: "attached" } | { kind: "bootstrapped" } | { kind: "refused"; reason: string };
 
 /**
  * Handles the "link an existing sheet" path (Picker result), for either

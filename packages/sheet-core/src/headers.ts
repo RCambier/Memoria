@@ -7,9 +7,6 @@
 /** Name of the spreadsheet tab that holds tasks. */
 export const SHEET_TAB_NAME = "Tasks";
 
-/** The A1 range covering the whole tab (header + data). */
-export const SHEET_RANGE = `${SHEET_TAB_NAME}!A:J`;
-
 /**
  * Column headers, in column order (A..J). This is the contract both clients
  * validate against — the header row of the sheet must match exactly (or
@@ -35,8 +32,6 @@ export const HEADERS = [
  * write of two new header cells) the first time it loads one.
  */
 export const LEGACY_HEADERS = HEADERS.slice(0, 8);
-
-export type Header = (typeof HEADERS)[number];
 
 /** Google Drive `appProperties` key used to tag spreadsheets created by this app. */
 export const APP_PROPERTY_KEY = "todosBoard";

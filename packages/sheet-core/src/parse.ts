@@ -86,7 +86,7 @@ function fieldErrorMessage(row: number, err: RowValidationError): SheetError {
 
 /**
  * Validates and parses the full `Tasks` sheet (header + data rows, as
- * returned by a Sheets `values.get` call on `SHEET_RANGE`). Never throws.
+ * returned by a Sheets `values.get` call on the Tasks tab). Never throws.
  *
  * Returns every valid task on success, or the first problem found on
  * failure, described precisely enough to fix without guessing (row,

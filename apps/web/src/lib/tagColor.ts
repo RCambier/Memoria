@@ -4,7 +4,7 @@
  * tag keeps its color everywhere it appears, across devices, with nothing
  * stored — the sheet only ever holds the tag names.
  */
-export const TAG_COLOR_COUNT = 6;
+const TAG_COLOR_COUNT = 6;
 
 export function tagColorClass(name: string): string {
   let h = 0;

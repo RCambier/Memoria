@@ -11,7 +11,7 @@ const UPLOAD_BASE = "https://www.googleapis.com/upload/drive/v3/files";
 const SPREADSHEET_MIME_TYPE = "application/vnd.google-apps.spreadsheet";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 
-export interface DriveFile {
+interface DriveFile {
   id: string;
   name: string;
   /** ISO 8601 last-modified timestamp. */
@@ -94,15 +94,6 @@ async function tagFile(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ appProperties }),
   });
-}
-
-/** Fetches basic metadata for a Picker-selected file, to check it's actually a spreadsheet. */
-export async function getFileMeta(
-  token: string,
-  fileId: string,
-): Promise<{ id: string; name: string; mimeType: string }> {
-  const url = `${BASE}/${fileId}?fields=id,name,mimeType`;
-  return authedJson(token, url);
 }
 
 /**

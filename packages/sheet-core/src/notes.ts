@@ -16,9 +16,6 @@ import type { SheetStore } from "./store.js";
 /** Name of the spreadsheet tab that holds notes. */
 export const NOTES_TAB_NAME = "Notes";
 
-/** The A1 range covering the whole Notes tab (header + data). */
-export const NOTES_RANGE = `${NOTES_TAB_NAME}!A:F`;
-
 /** Column headers for a notes sheet, in column order (A..F). */
 export const NOTES_HEADERS = ["id", "title", "body", "source", "created_at", "updated_at"] as const;
 

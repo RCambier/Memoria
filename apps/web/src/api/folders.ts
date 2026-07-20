@@ -23,7 +23,7 @@ import {
  * memo so each file's parents are checked at most once per browser.
  */
 
-export interface MemoriaFolders {
+interface MemoriaFolders {
   memoriaId: string;
   todosId: string;
   notesId: string;

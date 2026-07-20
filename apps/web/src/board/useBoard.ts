@@ -18,13 +18,13 @@ import { computeDropSortOrder } from "./dropOrder.js";
 
 const POLL_INTERVAL_MS = 5000;
 
-export type BoardState =
+type BoardState =
   | { status: "loading" }
   | { status: "ready"; tasks: Task[] }
   | { status: "malformed"; error: SheetError }
   | { status: "error"; message: string };
 
-export interface UseBoardResult {
+interface UseBoardResult {
   state: BoardState;
   /** When the last successful (or malformed-but-reachable) read completed. */
   lastSyncedAt: Date | null;

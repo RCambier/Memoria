@@ -12,7 +12,7 @@ const NOTES_REPLICA_KEY_PREFIX = "todos:notes-replica:";
 const NOTES_OUTBOX_KEY_PREFIX = "todos:notes-outbox:";
 
 /** The two sheet kinds the app manages — one connected sheet of each. */
-export type CachedCollectionKind = "board" | "notes";
+type CachedCollectionKind = "board" | "notes";
 
 /** Minimal subset of the `Storage` interface, so tests can inject a fake. */
 export interface KeyValueStore {

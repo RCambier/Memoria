@@ -20,13 +20,13 @@ import * as notesApi from "./notesApi.js";
 
 const POLL_INTERVAL_MS = 5000;
 
-export type NotesState =
+type NotesState =
   | { status: "loading" }
   | { status: "ready"; notes: Note[] }
   | { status: "malformed"; error: SheetError }
   | { status: "error"; message: string };
 
-export interface UseNotesResult {
+interface UseNotesResult {
   state: NotesState;
   /** When the last successful (or malformed-but-reachable) read completed. */
   lastSyncedAt: Date | null;

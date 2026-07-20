@@ -7,7 +7,7 @@ import type { Collection, CollectionKind } from "../api/drive.js";
  * a *slot* per kind: the connected sheet plus any extras, which the setup
  * screen surfaces for switching to or unlinking.
  */
-export interface KindSlot {
+interface KindSlot {
   connected: Collection | null;
   /** Other tagged sheets of this kind, newest-modified first. */
   extras: Collection[];
