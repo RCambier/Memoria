@@ -9,12 +9,13 @@ export interface NewTaskInput {
 }
 
 interface ComposerProps {
+  token: string | null;
   onSubmit: (input: NewTaskInput) => void;
   onCancel: () => void;
 }
 
 /** Inline top-of-column task composer — the empty-form case of `TaskForm`. */
-export function Composer({ onSubmit, onCancel }: ComposerProps) {
+export function Composer({ token, onSubmit, onCancel }: ComposerProps) {
   function handleSubmit(values: TaskFormValues): void {
     onSubmit({
       title: values.title,
@@ -25,5 +26,5 @@ export function Composer({ onSubmit, onCancel }: ComposerProps) {
     });
   }
 
-  return <TaskForm submitLabel="Add task" onSubmit={handleSubmit} onCancel={onCancel} />;
+  return <TaskForm token={token} submitLabel="Add task" onSubmit={handleSubmit} onCancel={onCancel} />;
 }

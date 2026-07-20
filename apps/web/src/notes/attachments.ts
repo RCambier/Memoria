@@ -1,30 +1,57 @@
 import { uploadFile } from "../api/drive.js";
-import { ensureMemoriaFolders } from "../api/folders.js";
+import { attachmentsFolderForKind, ensureMemoriaFolders } from "../api/folders.js";
 
 /**
- * Image attachments for notes: a pasted or dropped image is uploaded to
- * `Memoria/notes/attachments/` in the user's Drive, and the note embeds it
- * as `![name](drive:<fileId>)` — resolved back through Drive's own CDN
- * thumbnails at render time (`components/Markdown.tsx`). The image is a
- * plain Drive file the user owns, visible in Drive like everything else
- * Memoria stores.
+ * File attachments: anything pasted, dropped, or picked on a note or a task
+ * is uploaded to `Memoria/notes/attachments/` or `Memoria/todos/attachments/`
+ * in the user's Drive, then referenced from the sheet as plain text:
  *
- * Large pastes are downscaled in the browser before upload (retina
- * screenshots easily reach 5–10 MB): faster paste-to-visible, smaller Drive
- * footprint, and it keeps uploads far away from the 5 MB ceiling of Drive's
- * multipart upload. Images below the threshold upload untouched.
+ * - a note **image** embeds as `![name](drive:<fileId>)` and renders inline
+ *   through Drive's CDN thumbnails (`components/Markdown.tsx`);
+ * - any **other file** on a note embeds as a markdown link
+ *   `[📎 name](https://drive.google.com/…)`;
+ * - a file on a **task** appends a `📎 name — url` line to the description
+ *   (tasks are plain text; `Linkify` makes the URL clickable, and it works
+ *   from the sheet itself too).
+ *
+ * Attachments are ordinary Drive files the user owns. Large images are
+ * downscaled in the browser before upload (retina screenshots easily reach
+ * 5–10 MB): faster paste-to-visible, smaller Drive footprint, and far under
+ * the 5 MB ceiling of Drive's multipart upload — which other file types
+ * can't dodge, so they're refused above it with a clear message.
  */
 
-/** Only images are accepted as note attachments. */
+/** Images get inline rendering; everything else becomes a link. */
 export function isAttachableImage(file: { type: string }): boolean {
   return file.type.startsWith("image/");
 }
+
+/** Drive's multipart upload rejects bodies over ~5 MB; refuse just under it. */
+const MULTIPART_LIMIT_BYTES = 4_500_000;
 
 /** Above this many bytes an image is re-encoded before upload. */
 const DOWNSCALE_BYTES = 1_500_000;
 /** Longest edge after downscaling — plenty for any in-app rendering. */
 const MAX_EDGE_PX = 2048;
 const WEBP_QUALITY = 0.85;
+
+/** The shareable "open in Drive" URL for an uploaded file. Pure; tested. */
+export function driveFileUrl(fileId: string): string {
+  return `https://drive.google.com/file/d/${fileId}/view`;
+}
+
+/** Markdown a note embeds for an attachment. Pure; tested. */
+export function noteAttachmentMarkdown(name: string, fileId: string, isImage: boolean): string {
+  // The label must survive the markdown syntax: strip characters that would
+  // close the bracket early.
+  const label = name.replace(/[[\]()\n]/g, "");
+  return isImage ? `![${label}](drive:${fileId})` : `[📎 ${label}](${driveFileUrl(fileId)})`;
+}
+
+/** The description line a task gets for an attachment. Pure; tested. */
+export function taskAttachmentLine(name: string, fileId: string): string {
+  return `📎 ${name.replace(/\n/g, " ")} — ${driveFileUrl(fileId)}`;
+}
 
 /**
  * Re-encodes a large image to WebP at ≤2048px on the longest edge. Returns
@@ -52,28 +79,49 @@ async function downscaleForUpload(file: File | Blob): Promise<Blob> {
 }
 
 function attachmentName(original: File | Blob, uploaded: Blob): string {
-  const ext = (uploaded.type.split("/")[1] ?? "png").split("+")[0];
   const named =
     original instanceof File && original.name && original.name !== "image.png" ? original.name : null;
+  if (named && uploaded === original) return named;
+  const ext = (uploaded.type.split("/")[1] ?? "bin").split("+")[0];
   if (named) {
     // Keep the user's basename but make the extension honest post-re-encode.
-    return uploaded === original ? named : `${named.replace(/\.[a-z0-9]+$/i, "")}.${ext}`;
+    return `${named.replace(/\.[a-z0-9]+$/i, "")}.${ext}`;
   }
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   return `pasted-${stamp}.${ext}`;
 }
 
-/** Uploads one image (downscaled when large) and returns the markdown that embeds it. */
-export async function uploadAttachment(
+async function uploadToKind(
+  token: string,
+  kind: "board" | "notes",
+  file: File | Blob,
+): Promise<{ fileId: string; name: string; isImage: boolean }> {
+  const isImage = isAttachableImage(file);
+  const blob = isImage ? await downscaleForUpload(file) : file;
+  if (blob.size > MULTIPART_LIMIT_BYTES) {
+    const mb = (blob.size / 1_000_000).toFixed(1);
+    throw new Error(`it's ${mb} MB — attachments cap at ~5 MB.`);
+  }
+  const folders = await ensureMemoriaFolders(token);
+  const name = attachmentName(file, blob);
+  const { id } = await uploadFile(token, attachmentsFolderForKind(folders, kind), name, blob);
+  return { fileId: id, name, isImage };
+}
+
+/** Uploads one file for a note and returns the markdown that embeds it. */
+export async function uploadNoteAttachment(
   token: string,
   file: File | Blob,
 ): Promise<{ fileId: string; markdown: string }> {
-  const folders = await ensureMemoriaFolders(token);
-  const blob = await downscaleForUpload(file);
-  const name = attachmentName(file, blob);
-  const { id } = await uploadFile(token, folders.attachmentsId, name, blob);
-  // Alt text must survive the markdown syntax: strip characters that would
-  // close the bracket early.
-  const alt = name.replace(/[[\]()\n]/g, "");
-  return { fileId: id, markdown: `![${alt}](drive:${id})` };
+  const { fileId, name, isImage } = await uploadToKind(token, "notes", file);
+  return { fileId, markdown: noteAttachmentMarkdown(name, fileId, isImage) };
+}
+
+/** Uploads one file for a task and returns the description line that links it. */
+export async function uploadTaskAttachment(
+  token: string,
+  file: File | Blob,
+): Promise<{ fileId: string; line: string }> {
+  const { fileId, name } = await uploadToKind(token, "board", file);
+  return { fileId, line: taskAttachmentLine(name, fileId) };
 }

@@ -12,8 +12,9 @@ import {
  *
  *     Memoria/
  *       todos/             ← the Todos sheet
+ *         attachments/     ← files attached to tasks
  *       notes/             ← the Notes sheet
- *         attachments/     ← images pasted into notes
+ *         attachments/     ← images & files attached to notes
  *
  * Folders are found-or-created lazily, once per session. An earlier layout
  * used `boards/` instead of `todos/`; when that folder is found it's simply
@@ -27,7 +28,8 @@ interface MemoriaFolders {
   memoriaId: string;
   todosId: string;
   notesId: string;
-  attachmentsId: string;
+  notesAttachmentsId: string;
+  todosAttachmentsId: string;
 }
 
 /** v2: the `boards/` → `todos/` layout change re-checks every file's parents once. */
@@ -60,8 +62,17 @@ export function ensureMemoriaFolders(token: string): Promise<MemoriaFolders> {
         ensureTodosFolder(token, memoriaId),
         ensureFolder(token, "notes", memoriaId),
       ]);
-      const attachmentsId = await ensureFolder(token, "attachments", notesId!);
-      return { memoriaId, todosId: todosId!, notesId: notesId!, attachmentsId };
+      const [notesAttachmentsId, todosAttachmentsId] = await Promise.all([
+        ensureFolder(token, "attachments", notesId!),
+        ensureFolder(token, "attachments", todosId!),
+      ]);
+      return {
+        memoriaId,
+        todosId: todosId!,
+        notesId: notesId!,
+        notesAttachmentsId: notesAttachmentsId!,
+        todosAttachmentsId: todosAttachmentsId!,
+      };
     })().catch((err: unknown) => {
       foldersPromise = null;
       throw err;
@@ -73,6 +84,11 @@ export function ensureMemoriaFolders(token: string): Promise<MemoriaFolders> {
 /** The folder a collection of `kind` belongs in. */
 export function folderForKind(folders: MemoriaFolders, kind: CollectionKind): string {
   return kind === "notes" ? folders.notesId : folders.todosId;
+}
+
+/** The attachments folder for a kind (files dropped on a note / a task). */
+export function attachmentsFolderForKind(folders: MemoriaFolders, kind: CollectionKind): string {
+  return kind === "notes" ? folders.notesAttachmentsId : folders.todosAttachmentsId;
 }
 
 function readOrganized(): Set<string> {

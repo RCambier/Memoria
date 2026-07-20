@@ -172,6 +172,7 @@ function BoardShell({
 
       <Board
         tasks={tasks}
+        token={token}
         readOnly={readOnly}
         onAdd={(status, input) => void addTask({ ...input, status })}
         onMove={(id, status, dropIndex) => void moveTask(id, status, dropIndex)}

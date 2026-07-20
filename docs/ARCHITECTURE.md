@@ -282,18 +282,20 @@ and the app connects exactly one of each (see *First run* above).
   http(s) links, images. It parses to a typed AST rendered as React
   elements, never HTML strings: raw HTML in a note renders as text, so
   agent-written notes have nothing to inject and there is no sanitizer.
-- **Image attachments**: pasting or dropping an image into the note editor
-  uploads it to `Memoria/notes/attachments/` in the user's Drive
-  (multipart, `drive.file` scope) and embeds `![name](drive:<fileId>)`.
-  Large pastes (>1.5 MB) are downscaled in the browser first (WebP,
-  ≤2048px) — faster uploads and far under the 5 MB multipart ceiling;
-  smaller images upload untouched. Render resolves `drive:` sources through
-  **Drive's own CDN thumbnails** (`files.get?fields=thumbnailLink`, size
-  rewritten to the display size — 112px card tiles, 1600px in the open
-  note), so a card never downloads a multi-megabyte original; the ladder
-  falls back to a fresh link (they expire after hours) and finally to a
-  full authed download into an object URL. Attachments are ordinary Drive
-  files the user owns.
+- **Attachments**: any file pasted, dropped, or picked (📎, also the
+  mobile path) on a note or a task uploads to
+  `Memoria/notes/attachments/` / `Memoria/todos/attachments/` in the
+  user's Drive (multipart, `drive.file` scope). Note **images** embed as
+  `![name](drive:<fileId>)` and render inline through **Drive's own CDN
+  thumbnails** (`files.get?fields=thumbnailLink`, size rewritten to the
+  display size — 112px card tiles, 1600px in the open note; ladder falls
+  back to a fresh link, then a full authed download). Any **other file**
+  becomes a `[📎 name](drive.google.com/…)` markdown link on a note, or a
+  `📎 name — url` description line on a task (plain text — clickable via
+  Linkify and from the sheet itself). Large images (>1.5 MB) are
+  downscaled in the browser first (WebP, ≤2048px); other files are
+  refused above ~5 MB (the multipart ceiling). Attachments are ordinary
+  Drive files the user owns.
 - **Provenance**: `source` is `user` or `agent`, informational only.
   Agent-written notes render with a warm paper tint and an ✳ chip; the
   toolbar chips filter all / by you / by agents.

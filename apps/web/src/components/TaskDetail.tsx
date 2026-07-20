@@ -11,6 +11,7 @@ import {
 import { Linkify } from "../lib/linkify.js";
 import { STATUS_LABEL, STATUS_PILL_CLASS } from "../lib/statusMeta.js";
 import { useAutoGrow } from "../lib/useAutoGrow.js";
+import { uploadTaskAttachment } from "../notes/attachments.js";
 import { TagsEditor } from "./TagsEditor.js";
 
 /** What the dialog opens onto. "edit" just focuses the title — every field is
@@ -31,6 +32,7 @@ type ScheduleKind = "none" | "due" | "blocked";
 
 interface TaskDetailProps {
   task: Task;
+  token: string | null;
   initialMode: TaskDetailMode;
   readOnly: boolean;
   onClose: () => void;
@@ -49,6 +51,7 @@ interface TaskDetailProps {
  */
 export function TaskDetail({
   task,
+  token,
   initialMode,
   readOnly,
   onClose,
@@ -57,8 +60,39 @@ export function TaskDetail({
   onDelete,
 }: TaskDetailProps) {
   const [confirming, setConfirming] = useState(initialMode === "confirm");
+  const [attaching, setAttaching] = useState(0);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Sequential uploads append to the freshest description, not a stale prop.
+  const notesRef = useRef(task.notes);
+  notesRef.current = task.notes;
+
+  /** Uploads dropped/picked files to Drive; each lands as a 📎 line in the description. */
+  async function attachFiles(files: File[]): Promise<void> {
+    if (files.length === 0 || readOnly) return;
+    if (!token) {
+      setAttachError("Sign in to attach files.");
+      return;
+    }
+    setAttachError(null);
+    for (const file of files) {
+      setAttaching((n) => n + 1);
+      try {
+        const { line } = await uploadTaskAttachment(token, file);
+        const next = notesRef.current === "" ? line : `${notesRef.current}\n${line}`;
+        notesRef.current = next;
+        onSave({ notes: next });
+      } catch (err) {
+        setAttachError(
+          `Couldn't attach ${file.name || "file"}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      } finally {
+        setAttaching((n) => n - 1);
+      }
+    }
+  }
 
   // The confirm strip sits at the bottom — on long tasks it can land past the
   // fold, so bring it into view when it appears.
@@ -111,6 +145,15 @@ export function TaskDetail({
         aria-label={task.title}
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
+        onDragOver={(e) => {
+          if (!readOnly && e.dataTransfer?.types.includes("Files")) e.preventDefault();
+        }}
+        onDrop={(e) => {
+          const files = Array.from(e.dataTransfer?.files ?? []);
+          if (files.length === 0) return;
+          e.preventDefault();
+          void attachFiles(files);
+        }}
       >
         <div className="detail-head">
           <span className={`status-pill ${STATUS_PILL_CLASS[task.status]}`}>
@@ -161,6 +204,7 @@ export function TaskDetail({
           )}
         </dl>
 
+        {attachError && <p className="note-upload-error">{attachError}</p>}
         {!readOnly && !confirming && (
           <div className="detail-actions">
             <button
@@ -171,6 +215,26 @@ export function TaskDetail({
               Delete
             </button>
             <div className="flex-spacer" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => {
+                void attachFiles(Array.from(e.target.files ?? []));
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              className="attach-btn"
+              title="Attach a file (or drop one on the dialog)"
+              aria-label="Attach a file"
+              disabled={attaching > 0}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {attaching > 0 ? "Attaching…" : "📎"}
+            </button>
             {task.status !== "done" && (
               <button type="button" className="btn-primary btn-sm" onClick={onComplete}>
                 Move to Done

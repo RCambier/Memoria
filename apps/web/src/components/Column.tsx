@@ -9,6 +9,7 @@ import type { TaskDetailMode } from "./TaskDetail.js";
 interface ColumnProps {
   status: Status;
   tasks: Task[];
+  token: string | null;
   readOnly: boolean;
   /** Attaches the mobile pager's panel ref to this column's root element. */
   panelRef: (el: HTMLDivElement | null) => void;
@@ -26,6 +27,7 @@ interface ColumnProps {
 export function Column({
   status,
   tasks,
+  token,
   readOnly,
   panelRef,
   composerOpen,
@@ -58,6 +60,7 @@ export function Column({
           <div className="stack" ref={provided.innerRef} {...provided.droppableProps}>
             {composerOpen && !isMobile && (
               <Composer
+                token={token}
                 onSubmit={(input) => {
                   onAdd(input);
                   onCloseComposer();

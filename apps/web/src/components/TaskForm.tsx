@@ -1,6 +1,7 @@
 import { MAX_CELL_CHARS } from "@memoria/sheet-core";
 import { useEffect, useRef, useState } from "react";
 import { isDateOnly } from "../lib/dates.js";
+import { uploadTaskAttachment } from "../notes/attachments.js";
 import { TagsEditor } from "./TagsEditor.js";
 
 export interface TaskFormValues {
@@ -16,6 +17,8 @@ type ScheduleKind = "none" | "due" | "blocked";
 
 interface TaskFormProps {
   initial?: TaskFormValues;
+  /** Null while the session restores — attaching files needs Drive. */
+  token: string | null;
   submitLabel: string;
   onSubmit: (values: TaskFormValues) => void;
   onCancel: () => void;
@@ -28,7 +31,7 @@ interface TaskFormProps {
  * current values ("Save"). Enter on the title submits; Escape cancels from
  * anywhere.
  */
-export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormProps) {
+export function TaskForm({ initial, token, submitLabel, onSubmit, onCancel }: TaskFormProps) {
   const initialBlocked = initial?.blockedUntil ?? "";
   const [title, setTitle] = useState(initial?.title ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
@@ -40,11 +43,37 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   const [blockedDate, setBlockedDate] = useState(isDateOnly(initialBlocked) ? initialBlocked : "");
   const [blockedEvent, setBlockedEvent] = useState(isDateOnly(initialBlocked) ? "" : initialBlocked);
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
+  const [attaching, setAttaching] = useState(0);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  /** Uploads dropped/picked files to Drive; each lands as a 📎 line in the description. */
+  async function attachFiles(files: File[]): Promise<void> {
+    if (files.length === 0) return;
+    if (!token) {
+      setAttachError("Sign in to attach files.");
+      return;
+    }
+    setAttachError(null);
+    for (const file of files) {
+      setAttaching((n) => n + 1);
+      try {
+        const { line } = await uploadTaskAttachment(token, file);
+        setNotes((n) => (n === "" ? line : `${n}\n${line}`));
+      } catch (err) {
+        setAttachError(
+          `Couldn't attach ${file.name || "file"}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      } finally {
+        setAttaching((n) => n - 1);
+      }
+    }
+  }
 
   function submit(): void {
     const trimmed = title.trim();
@@ -67,6 +96,15 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
       onKeyDown={(e) => {
         if (e.key === "Escape") onCancel();
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        const files = Array.from(e.dataTransfer?.files ?? []);
+        if (files.length === 0) return;
+        e.preventDefault();
+        void attachFiles(files);
       }}
     >
       {/* Hard caps: a Google Sheets cell rejects anything over 50k characters. */}
@@ -93,7 +131,31 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
 
       <TagsEditor tags={tags} onChange={setTags} />
 
+      {attachError && <p className="note-upload-error">{attachError}</p>}
+
       <div className="composer-actions">
+        {/* Any file can be attached (drop it anywhere on the form, or pick):
+            it uploads to Drive and links from the description. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          onChange={(e) => {
+            void attachFiles(Array.from(e.target.files ?? []));
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          className="attach-btn"
+          title="Attach a file (or drop one anywhere on the form)"
+          aria-label="Attach a file"
+          disabled={attaching > 0}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {attaching > 0 ? "…" : "📎"}
+        </button>
         <select
           className="composer-schedule"
           aria-label="Schedule"
@@ -142,8 +204,13 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
           <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
             Cancel
           </button>
-          <button type="button" className="btn-primary btn-sm" onClick={submit} disabled={!title.trim()}>
-            {submitLabel}
+          <button
+            type="button"
+            className="btn-primary btn-sm"
+            onClick={submit}
+            disabled={!title.trim() || attaching > 0}
+          >
+            {attaching > 0 ? "Attaching…" : submitLabel}
           </button>
         </div>
       </div>

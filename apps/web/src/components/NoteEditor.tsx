@@ -2,7 +2,7 @@ import type { Note } from "@memoria/sheet-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatFullDate } from "../lib/dates.js";
 import { MAX_CELL_CHARS } from "@memoria/sheet-core";
-import { isAttachableImage, uploadAttachment } from "../notes/attachments.js";
+import { isAttachableImage, uploadNoteAttachment } from "../notes/attachments.js";
 import { Markdown } from "./Markdown.js";
 
 type EditorMode = "view" | "edit" | "confirm";
@@ -51,6 +51,7 @@ export function NoteEditor({
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // The draft the sheet already has — saves are diffed against this, so
   // autosave never writes a no-op row.
   const savedRef = useRef({ title: note.title, body: note.body });
@@ -145,24 +146,28 @@ export function NoteEditor({
     });
   }
 
-  async function uploadImages(files: File[]): Promise<void> {
+  async function uploadFiles(files: File[]): Promise<void> {
+    if (files.length === 0) return;
     if (!token) {
-      setUploadError("Sign in to add images.");
+      setUploadError("Sign in to attach files.");
       return;
     }
     setUploadError(null);
     for (const file of files) {
-      const placeholder = `![Uploading image…](uploading:${++uploadSeq})`;
+      // Images become the img-loading box they'll swap into; other files a link.
+      const placeholder = isAttachableImage(file)
+        ? `![Uploading image…](uploading:${++uploadSeq})`
+        : `[📎 Uploading ${(file.name || "file").replace(/[[\]()\n]/g, "")}…](uploading:${++uploadSeq})`;
       insertAtCursor(placeholder);
       setUploads((n) => n + 1);
       try {
-        const { markdown } = await uploadAttachment(token, file);
+        const { markdown } = await uploadNoteAttachment(token, file);
         patchBody(placeholder, markdown);
       } catch (err) {
         patchBody(`${placeholder}\n`, "");
         patchBody(placeholder, "");
         setUploadError(
-          `Couldn't upload ${file.name || "image"}: ${err instanceof Error ? err.message : String(err)}`,
+          `Couldn't upload ${file.name || "file"}: ${err instanceof Error ? err.message : String(err)}`,
         );
       } finally {
         setUploads((n) => n - 1);
@@ -170,24 +175,20 @@ export function NoteEditor({
     }
   }
 
-  function imagesFrom(list: FileList | null | undefined): File[] {
-    return Array.from(list ?? []).filter(isAttachableImage);
-  }
-
   function handlePaste(e: React.ClipboardEvent): void {
-    const images = imagesFrom(e.clipboardData?.files);
-    if (images.length === 0) return;
+    const files = Array.from(e.clipboardData?.files ?? []);
+    if (files.length === 0) return;
     e.preventDefault();
-    void uploadImages(images);
+    void uploadFiles(files);
   }
 
   function handleDrop(e: React.DragEvent): void {
     setDragOver(false);
-    const images = imagesFrom(e.dataTransfer?.files);
-    if (images.length === 0) return;
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
     e.preventDefault();
     if (mode !== "edit") setMode("edit");
-    void uploadImages(images);
+    void uploadFiles(files);
   }
 
   const isEmpty = draftTitle.trim() === "" && draftBody.trim() === "";
@@ -234,7 +235,7 @@ export function NoteEditor({
           <span className="note-head-meta">
             {agent && <span className="chip">✳ agent</span>}
             <span className="note-head-date">Updated {formatFullDate(note.updatedAt)}</span>
-            {uploads > 0 && <span className="note-uploading">Uploading image…</span>}
+            {uploads > 0 && <span className="note-uploading">Uploading…</span>}
           </span>
           <button className="detail-close" aria-label="Close" onClick={handleClose}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -270,7 +271,7 @@ export function NoteEditor({
               <textarea
                 ref={bodyRef}
                 className="note-body-input"
-                placeholder={"Write in markdown — paste or drag an image to attach it…"}
+                placeholder={"Write in markdown — paste or drop images and files to attach them…"}
                 value={draftBody}
                 maxLength={MAX_CELL_CHARS}
                 aria-label="Note body (markdown)"
@@ -280,6 +281,25 @@ export function NoteEditor({
               {uploadError && <p className="note-upload-error">{uploadError}</p>}
             </div>
             <div className="detail-actions note-foot">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => {
+                  void uploadFiles(Array.from(e.target.files ?? []));
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                className="attach-btn"
+                title="Attach a file (or drop / paste one)"
+                aria-label="Attach a file"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                📎
+              </button>
               {/* A Google Sheets cell caps at 50k characters — the input is
                   hard-capped above; the counter appears near the ceiling. */}
               {draftBody.length > MAX_CELL_CHARS - 5_000 ? (

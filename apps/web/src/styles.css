@@ -2243,8 +2243,10 @@ kbd {
 }
 .note-thumb .md-img-loading {
   display: block;
+  aspect-ratio: auto;
   width: 56px;
   height: 56px;
+  margin: 0;
   font-size: 0;
 }
 .note-thumb-badge {
@@ -2514,6 +2516,24 @@ kbd {
   font-size: 12.5px;
   color: var(--danger);
 }
+/* The 📎 file-picker — same quiet chrome as the other small controls. */
+.attach-btn {
+  border: 1px solid var(--line-strong);
+  background: var(--card);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.attach-btn:hover {
+  background: var(--bg-subtle);
+}
+.attach-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 
 /* Rendered markdown (components/Markdown.tsx). */
 .markdown {
@@ -2611,14 +2631,27 @@ kbd {
   border: 1px solid var(--line);
 }
 .md-img-loading {
-  display: block;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 10;
   margin: 8px 0;
-  padding: 18px 14px;
-  border: 1px dashed var(--line-strong);
+  border: 1px solid var(--line);
+  background: var(--bg-subtle);
   border-radius: 8px;
   font-size: 12.5px;
   color: var(--ink-faint);
   text-align: center;
+}
+/* Match the loaded image's constraints in each context, so the zone doesn't
+   jump when the placeholder swaps for the real picture. */
+.note-view-body .md-img-loading {
+  border-radius: 10px;
+  max-height: 60vh;
+}
+.note-card-md .md-img-loading {
+  max-height: 140px;
+  aspect-ratio: 16 / 6;
 }
 .md-img-loading.failed {
   color: var(--warn);

@@ -16,6 +16,7 @@ const DEFAULT_MOBILE_STATUS: Status = "in_progress";
 
 interface BoardProps {
   tasks: Task[];
+  token: string | null;
   readOnly: boolean;
   onAdd: (status: Status, input: NewTaskInput) => void;
   onMove: (id: string, status: Status, dropIndex: number) => void;
@@ -26,7 +27,7 @@ interface BoardProps {
   onDelete: (id: string) => void;
 }
 
-export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: BoardProps) {
+export function Board({ tasks, token, readOnly, onAdd, onMove, onEdit, onDelete }: BoardProps) {
   const [activeMobileStatus, setActiveMobileStatus] = useState<Status>(DEFAULT_MOBILE_STATUS);
   // While a card is mid-drag the pager's scroll snapping is suspended so the
   // library's edge auto-scroll can carry the card to a neighboring column.
@@ -146,6 +147,7 @@ export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: Boar
           {STATUSES.map((status) => (
             <Column
               key={status}
+              token={token}
               panelRef={(el) => {
                 if (el) panelRefs.current[status] = el;
               }}
@@ -182,6 +184,7 @@ export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: Boar
             style={overlayHeight !== null ? { height: overlayHeight } : undefined}
           >
             <Composer
+              token={token}
               onSubmit={(input) => {
                 onAdd(composerStatus, input);
                 setComposerStatus(null);
@@ -194,6 +197,7 @@ export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: Boar
       {detailTask && detail && (
         <TaskDetail
           task={detailTask}
+          token={token}
           initialMode={detail.mode}
           readOnly={readOnly}
           onClose={() => setDetail(null)}
