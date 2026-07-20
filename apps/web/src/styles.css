@@ -1388,6 +1388,14 @@ kbd {
   text-decoration: line-through;
   text-decoration-thickness: 1px;
 }
+/* Editing inside the detail dialog: the description gets real room (the
+   two-row compact form is for the in-column composer), and stays
+   user-resizable on desktop. */
+.detail-panel .composer-notes {
+  min-height: 160px;
+  resize: vertical;
+}
+
 /* Linkified URLs in task notes (lib/linkify.tsx) — the brand's quiet green. */
 .notes a,
 .detail-notes a {
