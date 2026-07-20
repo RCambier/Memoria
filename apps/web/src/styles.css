@@ -231,6 +231,12 @@ input {
   min-width: 0;
   overflow: hidden;
 }
+/* Reserve the width of the longest label ("Offline — retrying…") so the dot
+   doesn't wander as the text flips between "just now" / "Ns ago" / "Syncing…". */
+.sync-label {
+  display: inline-block;
+  min-width: 118px;
+}
 .sync .dot {
   width: 7px;
   height: 7px;
