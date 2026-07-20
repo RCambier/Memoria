@@ -87,7 +87,7 @@ export function Card({ task, index, readOnly, onOpen, onComplete }: CardProps) {
                                 onComplete();
                               }}
                             >
-                              Done
+                              Move to Done
                             </button>
                           )}
                           <button type="button" role="menuitem" className="menu-item" onClick={pick("edit")}>

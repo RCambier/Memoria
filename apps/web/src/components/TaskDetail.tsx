@@ -173,7 +173,7 @@ export function TaskDetail({
                 </button>
                 {task.status !== "done" && (
                   <button type="button" className="btn-primary btn-sm" onClick={onComplete}>
-                    Done
+                    Move to Done
                   </button>
                 )}
               </div>
