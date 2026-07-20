@@ -133,6 +133,13 @@ window.__notesGrid = () => notesGrid.map((r) => [...r]);
 
 let uploadCounter = 0;
 
+// ---- Fake Drive file store (the tagged collections the listing serves) ----
+const driveFiles: { id: string; name: string; appProperties: Record<string, string> }[] = [
+  { id: "sheet-1", name: "Todos", appProperties: { todosBoard: "1" } },
+  { id: "sheet-2", name: "Groceries", appProperties: { todosBoard: "1" } },
+  { id: "sheet-3", name: "Notes", appProperties: { [NOTES_APP_PROPERTY_KEY]: "1" } },
+];
+
 // ---- Fake Google Tasks backend (for the calendar mirror) ----
 const gtaskLists: { id: string; title: string }[] = [];
 const gtasksByList: Record<string, FakeGTask[]> = {};
@@ -191,19 +198,24 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     if (method === "PATCH") {
       window.__driveWrites.push({ method, url });
+      // Untag (appProperties key → null) really untags, so the setup
+      // screen's unlink flow survives the refetch it triggers.
+      const patch = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : {};
+      const props = patch.appProperties as Record<string, string | null> | undefined;
+      const fileId = /files\/([^?/]+)/.exec(url)?.[1];
+      const file = driveFiles.find((f) => f.id === fileId);
+      if (props && file) {
+        for (const [key, value] of Object.entries(props)) {
+          if (value === null) delete file.appProperties[key];
+          else file.appProperties[key] = value;
+        }
+      }
       return json({ id: "patched" });
     }
     return json({
-      files: [
-        { id: "sheet-1", name: "Todos", modifiedTime: now },
-        { id: "sheet-2", name: "Groceries", modifiedTime: now },
-        {
-          id: "sheet-3",
-          name: "Notes",
-          modifiedTime: now,
-          appProperties: { [NOTES_APP_PROPERTY_KEY]: "1" },
-        },
-      ],
+      files: driveFiles
+        .filter((f) => Object.keys(f.appProperties).length > 0)
+        .map((f) => ({ id: f.id, name: f.name, modifiedTime: now, appProperties: f.appProperties })),
     });
   }
 
@@ -262,9 +274,14 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     window.__sheetWrites.push({ method, url, body });
     const payload = body ? (JSON.parse(body) as Record<string, unknown>) : {};
 
-    // createSpreadsheet: a bare POST to the spreadsheets collection.
+    // createSpreadsheet: a bare POST to the spreadsheets collection. The new
+    // sheet joins the fake Drive store (untagged — the tag PATCH follows),
+    // so it shows up in later listings exactly like production.
     if (method === "POST" && !url.includes(":append") && !url.includes(":batchUpdate")) {
-      return json({ spreadsheetId: "sheet-created" });
+      const id = `sheet-created-${++uploadCounter}`;
+      const title = (payload.properties as { title?: string } | undefined)?.title ?? "Created";
+      driveFiles.push({ id, name: title, appProperties: {} });
+      return json({ spreadsheetId: id });
     }
     const target = gridForUrl(url);
 

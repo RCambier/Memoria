@@ -1,14 +1,17 @@
 import type { Note, NotePendingOp, PendingOp, Task } from "@memoria/sheet-core";
 
-const SPREADSHEET_ID_KEY = "todos:spreadsheetId";
-const COLLECTION_KIND_KEY = "todos:collectionKind";
+/** Pre-simplification keys: one cached sheet + its kind. Read once as a migration source. */
+const LEGACY_SPREADSHEET_ID_KEY = "todos:spreadsheetId";
+const LEGACY_COLLECTION_KIND_KEY = "todos:collectionKind";
+const SHEET_ID_KEY_PREFIX = "todos:sheet:";
+const ACTIVE_KIND_KEY = "todos:activeKind";
 const REPLICA_KEY_PREFIX = "todos:replica:";
 const OUTBOX_KEY_PREFIX = "todos:outbox:";
 const CALENDAR_MIRROR_KEY = "todos:calendarMirror";
 const NOTES_REPLICA_KEY_PREFIX = "todos:notes-replica:";
 const NOTES_OUTBOX_KEY_PREFIX = "todos:notes-outbox:";
 
-/** What the cached spreadsheet holds; older caches without the key mean "board". */
+/** The two sheet kinds the app manages — one connected sheet of each. */
 export type CachedCollectionKind = "board" | "notes";
 
 /** Minimal subset of the `Storage` interface, so tests can inject a fake. */
@@ -18,29 +21,51 @@ export interface KeyValueStore {
   removeItem(key: string): void;
 }
 
-export function getCachedSpreadsheetId(store: KeyValueStore = localStorage): string | null {
-  return store.getItem(SPREADSHEET_ID_KEY);
-}
-
-export function setCachedSpreadsheetId(id: string, store: KeyValueStore = localStorage): void {
-  store.setItem(SPREADSHEET_ID_KEY, id);
-}
-
-export function clearCachedSpreadsheetId(store: KeyValueStore = localStorage): void {
-  store.removeItem(SPREADSHEET_ID_KEY);
-  store.removeItem(COLLECTION_KIND_KEY);
-}
-
-/** The cached collection's kind — decides which view boots before any network. */
-export function getCachedCollectionKind(store: KeyValueStore = localStorage): CachedCollectionKind {
-  return store.getItem(COLLECTION_KIND_KEY) === "notes" ? "notes" : "board";
-}
-
-export function setCachedCollectionKind(
+/**
+ * The connected sheet of one kind (the app allows exactly one Todos sheet
+ * and one Notes sheet). Old caches stored a single sheet + kind pair; that
+ * pair seeds the matching kind's slot on first read.
+ */
+export function getConnectedSheetId(
   kind: CachedCollectionKind,
   store: KeyValueStore = localStorage,
+): string | null {
+  const id = store.getItem(SHEET_ID_KEY_PREFIX + kind);
+  if (id !== null) return id;
+  const legacyId = store.getItem(LEGACY_SPREADSHEET_ID_KEY);
+  const legacyKind = store.getItem(LEGACY_COLLECTION_KIND_KEY) === "notes" ? "notes" : "board";
+  if (legacyId !== null && legacyKind === kind) {
+    store.setItem(SHEET_ID_KEY_PREFIX + kind, legacyId);
+    return legacyId;
+  }
+  return null;
+}
+
+export function setConnectedSheetId(
+  kind: CachedCollectionKind,
+  id: string,
+  store: KeyValueStore = localStorage,
 ): void {
-  store.setItem(COLLECTION_KIND_KEY, kind);
+  store.setItem(SHEET_ID_KEY_PREFIX + kind, id);
+}
+
+export function clearConnectedSheetId(kind: CachedCollectionKind, store: KeyValueStore = localStorage): void {
+  store.removeItem(SHEET_ID_KEY_PREFIX + kind);
+  // The legacy pair would otherwise re-seed this kind on the next read.
+  if ((store.getItem(LEGACY_COLLECTION_KIND_KEY) === "notes" ? "notes" : "board") === kind) {
+    store.removeItem(LEGACY_SPREADSHEET_ID_KEY);
+    store.removeItem(LEGACY_COLLECTION_KIND_KEY);
+  }
+}
+
+/** Which of the two views (Todos / Notes) was active last — decides what boots. */
+export function getActiveKind(store: KeyValueStore = localStorage): CachedCollectionKind {
+  const kind = store.getItem(ACTIVE_KIND_KEY) ?? store.getItem(LEGACY_COLLECTION_KIND_KEY);
+  return kind === "notes" ? "notes" : "board";
+}
+
+export function setActiveKind(kind: CachedCollectionKind, store: KeyValueStore = localStorage): void {
+  store.setItem(ACTIVE_KIND_KEY, kind);
 }
 
 /** Whether the user turned on the Google Tasks calendar mirror (Settings). */

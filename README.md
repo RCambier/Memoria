@@ -20,12 +20,13 @@ See `docs/ARCHITECTURE.md` for the full design.
 
 ## Two ways to use it
 
-**Just want a board?** Use a hosted instance — for example
+**Just want to use it?** Use a hosted instance — for example
 [memoria-board.vercel.app](https://memoria-board.vercel.app). Sign in
-with Google, click **+ New board**, and you have a kanban board backed by a
-sheet in your own Drive. The app can only touch files it created or that
-you explicitly picked (`drive.file` scope) — never the rest of your Drive —
-and the deployment stores nothing about you anywhere.
+with Google and create your two sheets — a **Todos** board and a **Notes**
+grid, each backed by a Google Sheet in your own Drive. The app can only
+touch files it created or that you explicitly picked (`drive.file` scope) —
+never the rest of your Drive — and the deployment stores nothing about you
+anywhere.
 
 **Want your own instance, or agent access?** Fork this repo and follow
 **[docs/SETUP.md](docs/SETUP.md)** (~15 minutes: your own free Google Cloud
@@ -57,7 +58,7 @@ npm run dev --workspace=@memoria/web
 ```
 apps/web              React + TypeScript + Vite SPA — the board UI
 packages/sheet-core    Shared schema, validation, and ordering logic (no runtime deps)
-packages/mcp-server    The six MCP board tools (mounted by apps/web/api over HTTP)
+packages/mcp-server    The MCP board + notes tools (mounted by apps/web/api over HTTP)
 docs/                  Architecture, setup guide, design mockup
 ```
 
@@ -68,9 +69,11 @@ docs/                  Architecture, setup guide, design mockup
   OAuth token scoped to `drive.file` (it can only see files it created or
   you explicitly picked).
 - **`packages/mcp-server`** defines the tools (`list_boards`, `list_tasks`,
-  `add_task`, `update_task`, `move_task`, `complete_task`, `delete_task`),
-  transport-free; the Vercel function in `apps/web/api` serves them as a
-  remote MCP connector authenticated with each caller's own Google account.
+  `add_task`, `update_task`, `move_task`, `complete_task`, `delete_task`,
+  plus `list_note_collections`, `list_notes`, `add_note`, `update_note`,
+  `delete_note`), transport-free; the Vercel function in `apps/web/api`
+  serves them as a remote MCP connector authenticated with each caller's
+  own Google account.
 
 ## Scripts (from the repo root)
 

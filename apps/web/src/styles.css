@@ -212,19 +212,6 @@ input {
   color: var(--ink);
   background: var(--bg-subtle);
 }
-.board-tab.add-board {
-  color: var(--ink-faint);
-  padding: 6px 8px;
-}
-.mobile-board-name {
-  display: none;
-  font-size: 17px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
 .sync {
   display: inline-flex;
   align-items: center;
@@ -1098,49 +1085,11 @@ kbd {
   height: 20px;
   flex-shrink: 0;
 }
-.shelf-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 20px 12px;
-}
-.shelf-empty .sheet-glyph {
-  width: 28px;
-  height: 28px;
-  opacity: 0.45;
-}
-.shelf-empty p {
-  font-size: 13px;
-  margin: 0;
-  color: var(--ink-faint);
-}
 .shelf-note {
   font-size: 12.5px;
   color: var(--warn);
   padding: 8px 10px;
   margin: 0;
-}
-.board-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.board-name-form {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.board-name-form input {
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  padding: 7px 9px;
-  font-size: 13px;
-  background: var(--card);
-  color: var(--ink);
-  width: 200px;
 }
 .btn-ghost {
   background: var(--card);
@@ -1557,10 +1506,10 @@ kbd {
   .sync-label {
     display: none;
   }
-  /* 2a header: in a board, the logo (→ board shelf) sits next to the board's
-     own name — the "Memoria" text yields the space. The shelf and welcome
-     pages keep the full brand; this only scopes the topbar. */
-  .board-tabs,
+  /* 2a header, simplified: the logo shrinks to its glyph and the two fixed
+     tabs (Todos | Notes) take the space where the board name used to sit.
+     The setup and welcome pages keep the full brand; this only scopes the
+     topbar. */
   .topbar .wordmark-name {
     display: none;
   }
@@ -1571,12 +1520,15 @@ kbd {
     padding: 0;
     margin: 0;
   }
-  .mobile-board-name {
-    display: block;
+  .board-tabs {
     flex: 1;
-    font-size: 15px;
+    margin-left: 4px;
   }
-  /* All slack goes to the board name — the spacer would otherwise take half. */
+  .board-tab {
+    font-size: 14.5px;
+    padding: 8px 12px;
+  }
+  /* All slack goes to the tabs — the spacer would otherwise take half. */
   .topbar .spacer {
     flex: 0;
   }
@@ -2199,80 +2151,6 @@ kbd {
   border-color: var(--warn-line);
 }
 
-/* New-collection form (design 5c): the two type cards. */
-.collection-form {
-  flex-direction: column;
-  align-items: center;
-}
-.kind-cards {
-  display: flex;
-  gap: 12px;
-  width: min(460px, 100%);
-}
-.kind-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
-  padding: 16px;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.kind-card:hover {
-  border-color: var(--line-strong);
-}
-.kind-card.selected {
-  border: 2px solid var(--accent);
-  padding: 15px;
-}
-.kind-card-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.kind-card-desc {
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--ink-muted);
-}
-.collection-form-row {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.collection-form-row input {
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  padding: 7px 9px;
-  font-size: 13px;
-  background: var(--card);
-  color: var(--ink);
-  width: 200px;
-}
-.collection-form-note {
-  margin: 0;
-  font-size: 12px;
-  color: var(--ink-faint);
-}
-.collection-form-note code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
-}
-.board-kind {
-  font-size: 11.5px;
-  color: var(--ink-faint);
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 2px 7px;
-  flex-shrink: 0;
-}
-
 @media (max-width: 720px) {
   /* Two-column masonry (design 5b-1). */
   .notes-view {
@@ -2306,9 +2184,93 @@ kbd {
   .note-view-title {
     font-size: 20px;
   }
-  .kind-cards {
-    flex-direction: column;
-  }
+}
+
+/* ---------- sheet setup slots (one Todos, one Notes) ---------- */
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.slot-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.slot-desc {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+.slot-row {
+  cursor: default;
+}
+.slot-row:hover {
+  background: transparent;
+}
+.slot-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  padding: 6px 8px;
+  margin: -6px 0;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+.slot-open:hover {
+  background: var(--bg-subtle);
+}
+.slot-open:hover .board-open {
+  color: var(--ink);
+}
+.slot-extra .board-name {
+  font-weight: 400;
+  color: var(--ink-mid);
+}
+.slot-unlink {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.slot-unlink:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+.slot-unlink.confirm {
+  color: var(--danger);
+  font-weight: 600;
+}
+.slot-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 18px 12px;
+}
+.slot-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 
 @media (prefers-reduced-motion: reduce) {

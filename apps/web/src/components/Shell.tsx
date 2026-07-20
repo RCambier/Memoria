@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Collection, CollectionKind } from "../api/drive.js";
+import type { CollectionKind } from "../api/drive.js";
 import type { UserProfile } from "../auth/googleAuth.js";
 import { beginTasksConsent } from "../auth/session.js";
 import { useBoard } from "../board/useBoard.js";
@@ -23,14 +23,15 @@ interface ShellProps {
   /** Which view this spreadsheet gets: the kanban board or the notes grid. */
   kind: CollectionKind;
   profile: UserProfile | null;
-  collections: Collection[];
+  /** Which kinds have a connected sheet (for the fixed Todos/Notes tabs). */
+  connectedKinds: Record<CollectionKind, boolean>;
   /** False on popup-fallback deployments — the calendar mirror needs the auth backend. */
   calendarMirrorAvailable?: boolean;
   /** Whether the current session's grant includes the Google Tasks scope. */
   hasTasksScope?: boolean;
-  onSelectCollection: (id: string, kind: CollectionKind) => void;
+  onSelectKind: (kind: CollectionKind) => void;
   onSignOut: () => void;
-  onSwitchBoard: () => void;
+  onOpenSetup: () => void;
 }
 
 /** Chooses the view for the active collection. Split so each view mounts only its own data hook. */
@@ -43,12 +44,12 @@ function BoardShell({
   sessionOffline = false,
   spreadsheetId,
   profile,
-  collections,
+  connectedKinds,
   calendarMirrorAvailable = false,
   hasTasksScope = false,
-  onSelectCollection,
+  onSelectKind,
   onSignOut,
-  onSwitchBoard,
+  onOpenSetup,
 }: ShellProps) {
   const { state, lastSyncedAt, offline, pendingCount, addTask, updateTask, moveTask, deleteTask } = useBoard(
     token,
@@ -85,11 +86,12 @@ function BoardShell({
         offline={offline || sessionOffline}
         pendingCount={pendingCount}
         profile={profile}
-        collections={collections}
-        onSelectCollection={onSelectCollection}
+        activeKind="board"
+        connectedKinds={connectedKinds}
+        onSelectKind={onSelectKind}
         onOpenSettings={(section) => setSettingsOpen(section)}
         onSignOut={onSignOut}
-        onSwitchBoard={onSwitchBoard}
+        onOpenSetup={onOpenSetup}
       />
 
       {state.status === "malformed" && <MalformedBanner error={state.error} spreadsheetId={spreadsheetId} />}
@@ -132,10 +134,10 @@ function NotesShell({
   sessionOffline = false,
   spreadsheetId,
   profile,
-  collections,
-  onSelectCollection,
+  connectedKinds,
+  onSelectKind,
   onSignOut,
-  onSwitchBoard,
+  onOpenSetup,
 }: ShellProps) {
   const { state, lastSyncedAt, offline, pendingCount, addNote, updateNote, deleteNote } = useNotes(
     token,
@@ -165,11 +167,12 @@ function NotesShell({
         offline={offline || sessionOffline}
         pendingCount={pendingCount}
         profile={profile}
-        collections={collections}
-        onSelectCollection={onSelectCollection}
+        activeKind="notes"
+        connectedKinds={connectedKinds}
+        onSelectKind={onSelectKind}
         onOpenSettings={(section) => setSettingsOpen(section)}
         onSignOut={onSignOut}
-        onSwitchBoard={onSwitchBoard}
+        onOpenSetup={onOpenSetup}
       />
 
       {state.status === "malformed" && <MalformedBanner error={state.error} spreadsheetId={spreadsheetId} />}

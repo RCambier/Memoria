@@ -75,16 +75,23 @@ React + TypeScript + Vite static SPA. No backend of any kind.
     — plus basic profile (name, photo, email) for the account menu; all
     non-sensitive. Sheets/Drive calls are plain `fetch` against the REST
     APIs with the browser-held access token.
-- **First run** offers three paths that converge on a spreadsheet ID:
-  1. _Found your existing board_ — the app lists files it has access to,
-     filtered by `appProperties.todosBoard = "1"` (set at creation), and
-     offers to reconnect. This is the multi-device path.
-  2. _Create a board_ — creates the spreadsheet (tagged with the
-     appProperty), writes the header row.
-  3. _Use an existing sheet_ — Google Picker. Empty sheet → bootstrap
-     headers; valid headers → attach; anything else → refuse with a clear
-     message.
-- The chosen spreadsheet ID is cached in `localStorage`.
+- **The app manages exactly two sheets** — one Todos board and one Notes
+  grid — surfaced as two fixed tabs. The setup screen ("Manage sheets", also
+  the first-run screen) shows one *slot* per kind:
+  - A connected slot shows the sheet (found via its `appProperties` tag —
+    the multi-device path) with open and **unlink**. Unlinking only removes
+    the tag; the file stays in Drive and can be re-linked any time.
+  - An empty slot offers _create_ (new spreadsheet, tagged, header row
+    written, filed under `Memoria/…`) or _link an existing sheet_ (Google
+    Picker: an empty sheet gets the kind's tab + headers bootstrapped;
+    valid rows of that kind attach as-is; anything else is refused with a
+    clear message).
+  - Drive may still hold several tagged sheets of a kind (older versions
+    allowed it) — the newest is connected, the rest are listed under the
+    slot to switch to or unlink. (`lib/slots.ts` is the one place this
+    folding lives.)
+- The connected sheet id per kind (and the active view) is cached in
+  `localStorage`; old single-sheet caches seed the matching slot.
 - **Sync — local-first**: the UI renders a *projection*: the last known
   server state (the **replica**, persisted per board in `localStorage`)
   with the queue of pending local mutations (the **outbox**, also
@@ -244,7 +251,8 @@ credentials, not user credentials.
 Since 2026-07, a tagged spreadsheet is a **collection** of one of two kinds:
 a **board** (the kanban above) or a **notes** grid (design 5a/5b: a
 Keep-style masonry of small markdown notes, same shell, second tab). The
-kind only changes the view — both are plain sheets in the user's Drive.
+kind only changes the view — both are plain sheets in the user's Drive,
+and the app connects exactly one of each (see *First run* above).
 
 - **Tagging**: boards keep `appProperties.todosBoard = "1"`; notes sheets
   are tagged `memoriaNotes = "1"` instead. The keys are deliberately

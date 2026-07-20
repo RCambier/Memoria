@@ -72,7 +72,22 @@ export async function tagAsNotes(token: string, fileId: string): Promise<void> {
   await tagFile(token, fileId, { [NOTES_APP_PROPERTY_KEY]: NOTES_APP_PROPERTY_VALUE });
 }
 
-async function tagFile(token: string, fileId: string, appProperties: Record<string, string>): Promise<void> {
+/**
+ * Unlinks a sheet from the app by removing its kind tag. The file itself is
+ * untouched — it stays in the user's Drive and can be re-linked any time via
+ * the Picker (which re-tags it).
+ */
+export async function untagCollection(token: string, fileId: string, kind: CollectionKind): Promise<void> {
+  const key = kind === "notes" ? NOTES_APP_PROPERTY_KEY : APP_PROPERTY_KEY;
+  // Drive removes an appProperties key when it's set to null.
+  await tagFile(token, fileId, { [key]: null });
+}
+
+async function tagFile(
+  token: string,
+  fileId: string,
+  appProperties: Record<string, string | null>,
+): Promise<void> {
   const url = `${BASE}/${fileId}?fields=id`;
   await authedFetch(token, url, {
     method: "PATCH",

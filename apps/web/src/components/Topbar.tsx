@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import type { Collection, CollectionKind } from "../api/drive.js";
+import type { CollectionKind } from "../api/drive.js";
 import type { UserProfile } from "../auth/googleAuth.js";
 import { Logo } from "./Logo.js";
 
 /** Sync status shape shared by the board and notes views. */
 type ViewStatus = "loading" | "ready" | "malformed" | "error";
+
+/** The two fixed tabs — the app manages exactly one sheet of each kind. */
+const KIND_TABS: { kind: CollectionKind; label: string }[] = [
+  { kind: "board", label: "Todos" },
+  { kind: "notes", label: "Notes" },
+];
 
 interface TopbarProps {
   spreadsheetId: string;
@@ -15,12 +21,14 @@ interface TopbarProps {
   /** Local mutations not yet confirmed against the sheet. */
   pendingCount: number;
   profile: UserProfile | null;
-  /** All collections this account can see — rendered as tabs, current one active. */
-  collections: Collection[];
-  onSelectCollection: (id: string, kind: CollectionKind) => void;
+  /** Which view is showing. Both tabs always render; the active one is highlighted. */
+  activeKind: CollectionKind;
+  /** Which kinds have a connected sheet — a kind without one routes to setup on click. */
+  connectedKinds: Record<CollectionKind, boolean>;
+  onSelectKind: (kind: CollectionKind) => void;
   onOpenSettings: (section: "agents" | "calendar") => void;
   onSignOut: () => void;
-  onSwitchBoard: () => void;
+  onOpenSetup: () => void;
 }
 
 function syncLabel(
@@ -79,9 +87,9 @@ function AccountMenu({
   profile,
   sheetUrl,
   onSignOut,
-  onSwitchBoard,
+  onOpenSetup,
   onOpenSettings,
-}: Pick<TopbarProps, "profile" | "onSignOut" | "onSwitchBoard" | "onOpenSettings"> & {
+}: Pick<TopbarProps, "profile" | "onSignOut" | "onOpenSetup" | "onOpenSettings"> & {
   sheetUrl: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -133,10 +141,10 @@ function AccountMenu({
             role="menuitem"
             onClick={() => {
               setOpen(false);
-              onSwitchBoard();
+              onOpenSetup();
             }}
           >
-            View all boards
+            Manage sheets
           </button>
           <a role="menuitem" href={sheetUrl} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
             <SheetIcon /> Open in Google Sheets
@@ -186,26 +194,26 @@ export function Topbar({
   offline,
   pendingCount,
   profile,
-  collections,
-  onSelectCollection,
+  activeKind,
+  connectedKinds,
+  onSelectKind,
   onOpenSettings,
   onSignOut,
-  onSwitchBoard,
+  onOpenSetup,
 }: TopbarProps) {
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
   const showOffline = offline || status === "error";
   const label = syncLabel(status, lastSyncedAt, offline, pendingCount);
-  const activeCollection = collections.find((c) => c.id === spreadsheetId);
 
   return (
     <div className="topbar">
-      {/* The logo is the "home" affordance: tap → the board shelf (all boards). */}
+      {/* The logo is the "home" affordance: tap → the sheet setup screen. */}
       <button
         type="button"
         className="wordmark"
-        onClick={onSwitchBoard}
-        aria-label="View all boards"
-        title="View all boards"
+        onClick={onOpenSetup}
+        aria-label="Manage sheets"
+        title="Manage sheets"
       >
         <span className="wordmark-glyph" aria-hidden="true">
           <Logo size={24} />
@@ -215,37 +223,22 @@ export function Topbar({
         </span>
       </button>
 
-      {/* One tab per collection this account can see; + opens the shelf. */}
-      <div className="board-tabs" role="tablist" aria-label="Collections">
-        {collections.map((c) => (
+      {/* The two fixed views. A kind without a sheet still shows — clicking it
+          routes to setup, where the sheet can be created or linked. */}
+      <div className="board-tabs" role="tablist" aria-label="Views">
+        {KIND_TABS.map(({ kind, label: tabLabel }) => (
           <button
-            key={c.id}
+            key={kind}
             type="button"
             role="tab"
-            aria-selected={c.id === spreadsheetId}
-            className={`board-tab${c.id === spreadsheetId ? " active" : ""}`}
-            onClick={() => c.id !== spreadsheetId && onSelectCollection(c.id, c.kind)}
+            aria-selected={kind === activeKind}
+            className={`board-tab${kind === activeKind ? " active" : ""}${connectedKinds[kind] ? "" : " unset"}`}
+            onClick={() => kind !== activeKind && onSelectKind(kind)}
           >
-            {c.name}
+            {tabLabel}
           </button>
         ))}
-        {collections.length === 0 && (
-          <span className="board-tab active" role="tab" aria-selected="true">
-            Board
-          </span>
-        )}
-        <button
-          type="button"
-          className="board-tab add-board"
-          aria-label="Add collection"
-          onClick={onSwitchBoard}
-        >
-          +
-        </button>
       </div>
-
-      {/* Mobile shows just the active collection's name where the tabs would be. */}
-      <span className="mobile-board-name">{activeCollection?.name ?? "Board"}</span>
 
       <div className="spacer" />
       <div className={`sync${showOffline ? " offline" : ""}`} title={label} aria-label={label} role="status">
@@ -256,7 +249,7 @@ export function Topbar({
         profile={profile}
         sheetUrl={sheetUrl}
         onSignOut={onSignOut}
-        onSwitchBoard={onSwitchBoard}
+        onOpenSetup={onOpenSetup}
         onOpenSettings={onOpenSettings}
       />
     </div>

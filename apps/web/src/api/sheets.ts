@@ -73,22 +73,50 @@ export async function updateRow(
   });
 }
 
+/** Lists the spreadsheet's tabs (title + internal numeric id), in sheet order. */
+export async function listTabs(
+  token: string,
+  spreadsheetId: string,
+): Promise<{ title: string; sheetId: number }[]> {
+  const url = `${BASE}/${spreadsheetId}?fields=sheets.properties`;
+  const data = await authedJson<{ sheets?: { properties?: { title?: string; sheetId?: number } }[] }>(
+    token,
+    url,
+  );
+  return (data.sheets ?? []).flatMap((s) =>
+    s.properties?.title !== undefined && s.properties.sheetId != null
+      ? [{ title: s.properties.title, sheetId: s.properties.sheetId }]
+      : [],
+  );
+}
+
+/** Renames one tab (used when bootstrapping an empty picked sheet, so ranges resolve). */
+export async function renameTab(
+  token: string,
+  spreadsheetId: string,
+  sheetId: number,
+  title: string,
+): Promise<void> {
+  await authedFetch(token, `${BASE}/${spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requests: [{ updateSheetProperties: { properties: { sheetId, title }, fields: "title" } }],
+    }),
+  });
+}
+
 /** Fetches the tab's internal numeric sheetId, needed for row deletion. */
 export async function getTabSheetId(
   token: string,
   spreadsheetId: string,
   tab: SheetTab = TASKS_TAB,
 ): Promise<number> {
-  const url = `${BASE}/${spreadsheetId}?fields=sheets.properties`;
-  const data = await authedJson<{ sheets?: { properties?: { title?: string; sheetId?: number } }[] }>(
-    token,
-    url,
-  );
-  const found = data.sheets?.find((s) => s.properties?.title === tab.name);
-  if (!found?.properties || found.properties.sheetId == null) {
+  const found = (await listTabs(token, spreadsheetId)).find((t) => t.title === tab.name);
+  if (!found) {
     throw new Error(`This spreadsheet has no tab named "${tab.name}".`);
   }
-  return found.properties.sheetId;
+  return found.sheetId;
 }
 
 /** Deletes exactly one row. */

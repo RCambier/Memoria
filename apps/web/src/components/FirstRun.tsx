@@ -1,94 +1,31 @@
-import { useEffect, useRef, useState } from "react";
-import { findCollections, type Collection, type CollectionKind } from "../api/drive.js";
+import { useState } from "react";
+import type { Collection, CollectionKind } from "../api/drive.js";
 import { pickSpreadsheet } from "../api/picker.js";
 import { attachOrBootstrap, createCollection } from "../board/onboarding.js";
+import type { Slots } from "../lib/slots.js";
 import { Logo } from "./Logo.js";
 
 interface FirstRunProps {
   token: string;
-  onCollectionReady: (spreadsheetId: string, kind: CollectionKind) => void;
+  /** Null while the Drive listing is still loading. */
+  slots: Slots | null;
+  listError: string | null;
+  /** A slot got its sheet (created / linked / picked) — connect it and show that view. */
+  onSheetReady: (kind: CollectionKind, id: string) => void;
+  /** Removes the sheet's kind tag in Drive (the file stays); resolves when the listing is stale. */
+  onUnlink: (kind: CollectionKind, id: string) => Promise<void>;
 }
 
-type Busy = "create" | "attach" | null;
+const KIND_LABEL: Record<CollectionKind, string> = { board: "Todos", notes: "Notes" };
 
 /**
- * The converging first-run paths from the architecture doc: reconnect to a
- * collection this app created (found via Drive appProperties), create a new
- * one (a Todos board or a Notes grid — design 5c: the type only changes the
- * view; both are sheets), or attach an existing sheet via the Picker.
+ * The sheet setup screen: one slot per kind — your Todos sheet and your
+ * Notes sheet. An empty slot offers create / link; a connected slot shows
+ * the sheet with open and unlink. Extra tagged sheets of a kind (older
+ * versions allowed several) are listed under the slot to switch to or
+ * unlink, until one of each remains.
  */
-export function FirstRun({ token, onCollectionReady }: FirstRunProps) {
-  const [collections, setCollections] = useState<Collection[] | null>(null);
-  const [listError, setListError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<Busy>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [naming, setNaming] = useState(false);
-  const [newKind, setNewKind] = useState<CollectionKind>("board");
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  const named = useRef(false);
-
-  useEffect(() => {
-    if (naming) nameInputRef.current?.select();
-  }, [naming]);
-
-  useEffect(() => {
-    let cancelled = false;
-    findCollections(token)
-      .then((found) => {
-        if (!cancelled) setCollections(found);
-      })
-      .catch((err) => {
-        if (!cancelled) setListError(err instanceof Error ? err.message : String(err));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  /** Default name per type, until the user types their own. */
-  function pickKind(kind: CollectionKind): void {
-    setNewKind(kind);
-    const input = nameInputRef.current;
-    if (input && !named.current) {
-      input.value = kind === "notes" ? "Notes" : "Todos";
-      input.select();
-    }
-  }
-
-  async function handleCreate(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    const title = nameInputRef.current?.value.trim() || (newKind === "notes" ? "Notes" : "Todos");
-    setBusy("create");
-    setError(null);
-    try {
-      const id = await createCollection(token, title, newKind);
-      onCollectionReady(id, newKind);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleAttach(): Promise<void> {
-    setBusy("attach");
-    setError(null);
-    try {
-      const fileId = await pickSpreadsheet(token);
-      if (!fileId) return;
-      const outcome = await attachOrBootstrap(token, fileId);
-      if (outcome.kind === "refused") {
-        setError(`Can't use that sheet: ${outcome.reason}`);
-      } else {
-        onCollectionReady(fileId, "board");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
-
+export function FirstRun({ token, slots, listError, onSheetReady, onUnlink }: FirstRunProps) {
   return (
     <div className="first-run">
       <div className="first-run-brand" aria-hidden="true">
@@ -99,110 +36,154 @@ export function FirstRun({ token, onCollectionReady }: FirstRunProps) {
       </div>
 
       <div>
-        <h1>Your collections</h1>
-        <p>Each one — a board of todos or a grid of notes — is a Google Sheet in your Drive.</p>
+        <h1>Your sheets</h1>
+        <p>Memoria keeps two Google Sheets in your Drive: one for todos, one for notes.</p>
+      </div>
+
+      {listError && <p className="shelf-note">Couldn&rsquo;t list your sheets: {listError}</p>}
+
+      <KindSlotSection
+        kind="board"
+        token={token}
+        slots={slots}
+        onSheetReady={onSheetReady}
+        onUnlink={onUnlink}
+      />
+      <KindSlotSection
+        kind="notes"
+        token={token}
+        slots={slots}
+        onSheetReady={onSheetReady}
+        onUnlink={onUnlink}
+      />
+    </div>
+  );
+}
+
+type Busy = "create" | "link" | "unlink" | null;
+
+function KindSlotSection({
+  kind,
+  token,
+  slots,
+  onSheetReady,
+  onUnlink,
+}: Pick<FirstRunProps, "token" | "slots" | "onSheetReady" | "onUnlink"> & { kind: CollectionKind }) {
+  const [busy, setBusy] = useState<Busy>(null);
+  const [error, setError] = useState<string | null>(null);
+  /** Id of the sheet whose unlink is awaiting its second, confirming click. */
+  const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
+
+  const slot = slots?.[kind] ?? null;
+  const label = KIND_LABEL[kind];
+
+  async function run(what: Exclude<Busy, null>, work: () => Promise<void>): Promise<void> {
+    setBusy(what);
+    setError(null);
+    try {
+      await work();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function handleCreate(): void {
+    void run("create", async () => {
+      const id = await createCollection(token, label, kind);
+      onSheetReady(kind, id);
+    });
+  }
+
+  function handleLink(): void {
+    void run("link", async () => {
+      const fileId = await pickSpreadsheet(token);
+      if (!fileId) return;
+      const outcome = await attachOrBootstrap(token, fileId, kind);
+      if (outcome.kind === "refused") {
+        setError(`Can't use that sheet: ${outcome.reason}`);
+      } else {
+        onSheetReady(kind, fileId);
+      }
+    });
+  }
+
+  function handleUnlink(id: string): void {
+    if (confirmUnlink !== id) {
+      setConfirmUnlink(id);
+      return;
+    }
+    setConfirmUnlink(null);
+    void run("unlink", () => onUnlink(kind, id));
+  }
+
+  function row(c: Collection, connected: boolean): React.JSX.Element {
+    return (
+      <div className={`board-row slot-row${connected ? "" : " slot-extra"}`} key={c.id}>
+        <SheetGlyph kind={kind} />
+        <button
+          type="button"
+          className="slot-open"
+          onClick={() => onSheetReady(kind, c.id)}
+          disabled={busy !== null}
+        >
+          <span className="board-name">{c.name}</span>
+          <span className="board-open">{connected ? "Open →" : "Use this →"}</span>
+        </button>
+        <button
+          type="button"
+          className={`slot-unlink${confirmUnlink === c.id ? " confirm" : ""}`}
+          onClick={() => handleUnlink(c.id)}
+          disabled={busy !== null}
+        >
+          {confirmUnlink === c.id ? "Really unlink?" : busy === "unlink" ? "Unlinking…" : "Unlink"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="slot" aria-label={`${label} sheet`}>
+      <div className="slot-head">
+        <h2>{label}</h2>
+        <span className="slot-desc">
+          {kind === "board"
+            ? "A small board. Items move through statuses."
+            : "A grid of notes. Free-form markdown."}
+        </span>
       </div>
 
       {error && <div className="first-run-error">{error}</div>}
 
       <div className="board-shelf">
-        {collections === null && !listError && (
-          <>
-            <div className="board-row skeleton" aria-hidden="true" />
-            <div className="board-row skeleton" aria-hidden="true" />
-          </>
-        )}
-        {listError && <p className="shelf-note">Couldn&rsquo;t list your collections: {listError}</p>}
-        {collections && collections.length === 0 && (
-          <div className="shelf-empty">
-            <SheetGlyph kind="board" />
-            <p>Nothing yet</p>
+        {slot === null && <div className="board-row skeleton" aria-hidden="true" />}
+
+        {slot?.connected && row(slot.connected, true)}
+        {slot?.extras.map((c) => row(c, false))}
+
+        {slot && !slot.connected && (
+          <div className="slot-empty-actions">
+            <button className="btn-primary" onClick={handleCreate} disabled={busy !== null}>
+              {busy === "create" ? "Creating…" : `+ Create your ${label} sheet`}
+            </button>
+            <button className="btn-ghost" onClick={handleLink} disabled={busy !== null}>
+              {busy === "link" ? "Opening Drive…" : "Link an existing sheet"}
+            </button>
           </div>
         )}
-        {collections?.map((c) => (
-          <button className="board-row" key={c.id} onClick={() => onCollectionReady(c.id, c.kind)}>
-            <SheetGlyph kind={c.kind} />
-            <span className="board-name">{c.name}</span>
-            <span className="board-kind">{c.kind === "notes" ? "Notes" : "Board"}</span>
-            <span className="board-open">Open →</span>
-          </button>
-        ))}
       </div>
 
-      {naming ? (
-        <form className="board-name-form collection-form" onSubmit={handleCreate}>
-          <div className="kind-cards" role="radiogroup" aria-label="Collection type">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={newKind === "board"}
-              className={`kind-card${newKind === "board" ? " selected" : ""}`}
-              onClick={() => pickKind("board")}
-              disabled={busy !== null}
-            >
-              <BoardKindGlyph />
-              <span className="kind-card-name">Todos</span>
-              <span className="kind-card-desc">A small board. Items move through statuses.</span>
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={newKind === "notes"}
-              className={`kind-card${newKind === "notes" ? " selected" : ""}`}
-              onClick={() => pickKind("notes")}
-              disabled={busy !== null}
-            >
-              <NotesKindGlyph />
-              <span className="kind-card-name">Notes</span>
-              <span className="kind-card-desc">A grid of notes. Free-form markdown, no statuses.</span>
-            </button>
-          </div>
-          <div className="collection-form-row">
-            <input
-              ref={nameInputRef}
-              type="text"
-              defaultValue="Todos"
-              aria-label="Collection name"
-              disabled={busy !== null}
-              onChange={() => {
-                named.current = true;
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape" && busy === null) setNaming(false);
-              }}
-            />
-            <button className="btn-primary" type="submit" disabled={busy !== null}>
-              {busy === "create" ? "Creating…" : "Create"}
-            </button>
-            <button
-              className="btn-ghost"
-              type="button"
-              onClick={() => setNaming(false)}
-              disabled={busy !== null}
-            >
-              Cancel
-            </button>
-          </div>
-          <p className="collection-form-note">
-            Creates a new sheet in your Drive, under{" "}
-            <code>Memoria/{newKind === "notes" ? "notes" : "boards"}/</code>.
-          </p>
-        </form>
-      ) : (
-        <div className="board-actions">
-          <button className="btn-primary" onClick={() => setNaming(true)} disabled={busy !== null}>
-            + New collection
-          </button>
-          <button className="btn-ghost" onClick={handleAttach} disabled={busy !== null}>
-            {busy === "attach" ? "Opening Drive…" : "Link a sheet as a board"}
-          </button>
-        </div>
+      {slot?.connected && (
+        <p className="slot-note">
+          Unlinking only disconnects the sheet from Memoria — it stays in your Drive.
+        </p>
       )}
-    </div>
+    </section>
   );
 }
 
-/** Small Google-Sheets-style tile; notes collections get a warm paper variant. */
+/** Small Google-Sheets-style tile; the notes sheet gets a warm paper variant. */
 function SheetGlyph({ kind }: { kind: CollectionKind }) {
   if (kind === "notes") {
     return (
@@ -228,28 +209,6 @@ function SheetGlyph({ kind }: { kind: CollectionKind }) {
         strokeLinecap="round"
         fill="none"
       />
-    </svg>
-  );
-}
-
-/** Design 5c's little type illustrations: three kanban columns / a 2×2 note grid. */
-function BoardKindGlyph() {
-  return (
-    <svg width="34" height="26" viewBox="0 0 34 26" fill="none" aria-hidden="true">
-      <rect x="0" y="0" width="10" height="26" rx="2.5" fill="var(--status-backlog-bg)" />
-      <rect x="12" y="0" width="10" height="18" rx="2.5" fill="var(--status-progress-bg)" />
-      <rect x="24" y="0" width="10" height="22" rx="2.5" fill="var(--status-done-bg)" />
-    </svg>
-  );
-}
-
-function NotesKindGlyph() {
-  return (
-    <svg width="34" height="26" viewBox="0 0 34 26" fill="none" aria-hidden="true">
-      <rect x="0" y="0" width="15" height="12" rx="2.5" fill="var(--warn-bg)" />
-      <rect x="19" y="0" width="15" height="16" rx="2.5" fill="var(--bg-subtle)" />
-      <rect x="0" y="15" width="15" height="11" rx="2.5" fill="var(--bg-subtle)" />
-      <rect x="19" y="19" width="15" height="7" rx="2.5" fill="var(--warn-bg)" />
     </svg>
   );
 }
