@@ -16,7 +16,7 @@ interface TopbarProps {
   /** All boards this account can see — rendered as tabs, current one active. */
   boards: DriveFile[];
   onSelectBoard: (id: string) => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (section: "agents" | "calendar") => void;
   onSignOut: () => void;
   onSwitchBoard: () => void;
 }
@@ -67,12 +67,21 @@ function AgentIcon() {
   );
 }
 
-/** The account button: profile photo when we have one, an initial otherwise. Opens a small menu. */
+/**
+ * The account button: profile photo when we have one, an initial otherwise.
+ * Opens THE app menu — navigation, current-board actions, and integrations
+ * grouped top to bottom, with sign-out isolated at the end (never adjacent
+ * to the frequently-used items).
+ */
 function AccountMenu({
   profile,
+  sheetUrl,
   onSignOut,
   onSwitchBoard,
-}: Pick<TopbarProps, "profile" | "onSignOut" | "onSwitchBoard">) {
+  onOpenSettings,
+}: Pick<TopbarProps, "profile" | "onSignOut" | "onSwitchBoard" | "onOpenSettings"> & {
+  sheetUrl: string;
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -125,8 +134,33 @@ function AccountMenu({
               onSwitchBoard();
             }}
           >
-            Switch board
+            View all boards
           </button>
+          <a role="menuitem" href={sheetUrl} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
+            <SheetIcon /> Open in Google Sheets
+          </a>
+          <div className="menu-divider" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onOpenSettings("agents");
+            }}
+          >
+            <AgentIcon /> Connect AI agents
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onOpenSettings("calendar");
+            }}
+          >
+            Google Calendar sync
+          </button>
+          <div className="menu-divider" />
           <button
             type="button"
             role="menuitem"
@@ -211,27 +245,13 @@ export function Topbar({
         <span className="dot" />
         <span className="sync-label">{label}</span>
       </div>
-      <a
-        className="top-link"
-        href={sheetUrl}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Open in Google Sheets"
-        title="Open in Google Sheets"
-      >
-        <SheetIcon />
-        <span className="top-link-label">Open in Google Sheets</span>
-      </a>
-      <button
-        className="top-link"
-        onClick={onOpenSettings}
-        aria-label="Connect from agents"
-        title="Connect from agents"
-      >
-        <AgentIcon />
-        <span className="top-link-label">Connect from agents</span>
-      </button>
-      <AccountMenu profile={profile} onSignOut={onSignOut} onSwitchBoard={onSwitchBoard} />
+      <AccountMenu
+        profile={profile}
+        sheetUrl={sheetUrl}
+        onSignOut={onSignOut}
+        onSwitchBoard={onSwitchBoard}
+        onOpenSettings={onOpenSettings}
+      />
     </div>
   );
 }

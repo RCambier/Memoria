@@ -245,28 +245,6 @@ input {
   flex: 1;
   min-width: 0;
 }
-.top-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  color: var(--ink-muted);
-  text-decoration: none;
-  padding: 5px 9px;
-  border-radius: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.top-link:hover {
-  background: var(--bg-subtle);
-  color: var(--ink);
-}
-.top-link svg {
-  flex-shrink: 0;
-}
 .account {
   position: relative;
   margin-left: 6px;
@@ -327,19 +305,34 @@ input {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.account-menu button {
+.account-menu button,
+.account-menu a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border: none;
   background: transparent;
   font: inherit;
   font-size: 13px;
   color: var(--ink);
   text-align: left;
-  padding: 7px 10px;
+  text-decoration: none;
+  padding: 8px 10px;
   border-radius: 5px;
   cursor: pointer;
 }
-.account-menu button:hover {
+.account-menu button:hover,
+.account-menu a:hover {
   background: var(--bg-subtle);
+}
+.account-menu svg {
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+.account-menu .menu-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 6px;
 }
 
 /* ---------- board ---------- */
@@ -425,7 +418,6 @@ input {
   color: var(--ink);
 }
 .col-head .add:focus-visible,
-.top-link:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -1551,15 +1543,8 @@ kbd {
     gap: 4px;
     padding: 14px 16px 10px;
   }
-  .top-link-label,
   .sync-label {
     display: none;
-  }
-  .top-link {
-    min-width: 38px;
-    min-height: 38px;
-    justify-content: center;
-    padding: 8px;
   }
   /* 2a header: in a board, the logo (→ board shelf) sits next to the board's
      own name — the "Memoria" text yields the space. The shelf and welcome

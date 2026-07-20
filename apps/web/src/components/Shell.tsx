@@ -44,8 +44,8 @@ export function Shell({
     token,
     spreadsheetId,
   );
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  useBackClose(settingsOpen, () => setSettingsOpen(false));
+  const [settingsOpen, setSettingsOpen] = useState<false | "agents" | "calendar">(false);
+  useBackClose(settingsOpen !== false, () => setSettingsOpen(false));
   const [mirrorEnabled, setMirrorEnabled] = useState(getCalendarMirrorEnabled);
 
   const readOnly = state.status !== "ready";
@@ -77,7 +77,7 @@ export function Shell({
         profile={profile}
         boards={boards}
         onSelectBoard={onSelectBoard}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={(section) => setSettingsOpen(section)}
         onSignOut={onSignOut}
         onSwitchBoard={onSwitchBoard}
       />
@@ -102,8 +102,9 @@ export function Shell({
         onDelete={(id) => void deleteTask(id)}
       />
 
-      {settingsOpen && (
+      {settingsOpen !== false && (
         <SettingsPanel
+          initialSection={settingsOpen}
           onClose={() => setSettingsOpen(false)}
           calendarMirror={
             calendarMirrorAvailable

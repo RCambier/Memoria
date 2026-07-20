@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { buildClaudeCodeCliSnippet, buildConnectorUrl } from "../lib/mcpSnippet.js";
 
 interface SettingsPanelProps {
+  /** Which section the panel opens scrolled to. */
+  initialSection: "agents" | "calendar";
   onClose: () => void;
   /** Null on deployments without the auth backend (the mirror needs it). */
   calendarMirror: {
@@ -33,7 +35,20 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-export function SettingsPanel({ onClose, calendarMirror }: SettingsPanelProps) {
+export function SettingsPanel({ initialSection, onClose, calendarMirror }: SettingsPanelProps) {
+  const calendarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (initialSection === "calendar") calendarRef.current?.scrollIntoView({ block: "start" });
+  }, [initialSection]);
+
+  // Escape closes, like every other overlay in the app.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   const connectorUrl = buildConnectorUrl(window.location.origin);
   const cliSnippet = buildClaudeCodeCliSnippet(window.location.origin);
 
@@ -105,7 +120,7 @@ export function SettingsPanel({ onClose, calendarMirror }: SettingsPanelProps) {
         </div>
 
         {calendarMirror && (
-          <div className="settings-section">
+          <div className="settings-section" ref={calendarRef}>
             <h2>Google Calendar</h2>
             <p className="settings-intro">
               Mirror tasks that have a due date into a &ldquo;Memoria&rdquo; Google Tasks list — they show up
