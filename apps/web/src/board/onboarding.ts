@@ -23,7 +23,7 @@ function tagForKind(token: string, spreadsheetId: string, kind: CollectionKind):
 /**
  * Creates a brand-new collection sheet: a spreadsheet with the right tab +
  * header row, the appProperties tag for reconnect, filed under
- * `Memoria/boards/` or `Memoria/notes/` in the user's Drive. Filing is
+ * `Memoria/todos/` or `Memoria/notes/` in the user's Drive. Filing is
  * best-effort — a failure leaves the sheet in the Drive root, where the
  * boot-time organizer will pick it up later.
  */

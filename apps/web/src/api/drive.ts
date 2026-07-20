@@ -106,11 +106,11 @@ export async function getFileMeta(
 }
 
 /**
- * Finds a folder by name under `parentId` ("root" for My Drive), creating it
- * if missing. With the `drive.file` scope the search only sees folders this
- * app created — exactly the ones we manage.
+ * Finds a folder by name under `parentId` ("root" for My Drive). With the
+ * `drive.file` scope the search only sees folders this app created —
+ * exactly the ones we manage. Returns `null` when there is none.
  */
-export async function ensureFolder(token: string, name: string, parentId: string): Promise<string> {
+export async function findFolder(token: string, name: string, parentId: string): Promise<string | null> {
   // Drive queries quote with single quotes; escape any in the name.
   const escaped = name.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   const q =
@@ -118,7 +118,12 @@ export async function ensureFolder(token: string, name: string, parentId: string
     `name='${escaped}' and '${parentId}' in parents`;
   const params = new URLSearchParams({ q, pageSize: "1", fields: "files(id)", spaces: "drive" });
   const found = await authedJson<{ files?: { id: string }[] }>(token, `${BASE}?${params.toString()}`);
-  const existing = found.files?.[0]?.id;
+  return found.files?.[0]?.id ?? null;
+}
+
+/** Finds a folder by name under `parentId`, creating it if missing. */
+export async function ensureFolder(token: string, name: string, parentId: string): Promise<string> {
+  const existing = await findFolder(token, name, parentId);
   if (existing) return existing;
 
   const created = await authedJson<{ id: string }>(token, `${BASE}?fields=id`, {
@@ -127,6 +132,15 @@ export async function ensureFolder(token: string, name: string, parentId: string
     body: JSON.stringify({ name, mimeType: FOLDER_MIME_TYPE, parents: [parentId] }),
   });
   return created.id;
+}
+
+/** Renames a file or folder in place (id, parents, and contents unchanged). */
+export async function renameFile(token: string, fileId: string, name: string): Promise<void> {
+  await authedFetch(token, `${BASE}/${fileId}?fields=id`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
 }
 
 /**

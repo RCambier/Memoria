@@ -289,19 +289,22 @@ and the app connects exactly one of each (see *First run* above).
 
 ### Drive layout
 
-The app files its spreadsheets under one folder tree in My Drive:
+The app files its spreadsheets under one folder tree in My Drive, one
+folder per sheet kind:
 
 ```
 Memoria/
-  boards/            board spreadsheets
-  notes/             notes spreadsheets
+  todos/             the Todos sheet
+  notes/             the Notes sheet
     attachments/     images pasted into notes
 ```
 
-New collections are created there; on boot the web app quietly moves any
-tagged collection that lives elsewhere into place (`api/folders.ts`,
-best-effort, memoized per browser, file contents never touched). Sheets the
-user attached via the Picker are left where the user keeps them.
+New sheets are created there; on boot the web app quietly moves any tagged
+sheet that lives elsewhere into place (`api/folders.ts`, best-effort,
+memoized per browser, file contents never touched). An earlier layout named
+the todos folder `boards/` — when found, it's renamed to `todos/` in place
+(same folder id, contents follow for free). Sheets the user attached via
+the Picker are left where the user keeps them.
 
 ## The sheet schema
 

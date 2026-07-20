@@ -308,6 +308,6 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 localStorage.setItem("todos:spreadsheetId", "sheet-1");
 localStorage.setItem("todos:collectionKind", "board");
 // The organizer memo — the fixture pretends everything is already filed.
-localStorage.setItem("todos:organizedFiles", JSON.stringify(["sheet-1", "sheet-2", "sheet-3"]));
+localStorage.setItem("todos:organizedFiles:v2", JSON.stringify(["sheet-1", "sheet-2", "sheet-3"]));
 
 createRoot(document.getElementById("root")!).render(<App />);

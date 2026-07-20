@@ -124,7 +124,7 @@ export function App() {
         const slots = deriveSlots(found, sheetIdsRef.current);
         applyConnected("board", slots.board.connected?.id ?? null);
         applyConnected("notes", slots.notes.connected?.id ?? null);
-        // File everything under Memoria/boards | Memoria/notes, moving
+        // File everything under Memoria/todos | Memoria/notes, moving
         // strays in. Fire-and-forget: never load-bearing.
         void organizeCollections(token, found);
       })
