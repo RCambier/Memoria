@@ -1662,10 +1662,13 @@ kbd {
   font: inherit;
   font-size: 12.5px;
   padding: 2px 4px;
+  margin-left: -4px;
   border-radius: 6px;
   outline: none;
-  min-width: 120px;
-  flex: 1;
+  /* Drop to its own full-width line under the select + date so the long
+     "or an event…" placeholder is never clipped by the panel edge. */
+  flex: 1 1 100%;
+  min-width: 0;
 }
 .detail-blocked-event:hover {
   background: var(--bg-subtle);
@@ -1686,15 +1689,17 @@ kbd {
   text-decoration: underline;
 }
 .detail-meta {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   font-size: 12.5px;
 }
 .detail-meta > div {
   display: flex;
+  align-items: baseline; /* label sits on the value's first-line baseline */
   gap: 12px;
+  min-height: 22px; /* even rhythm whether the row is text or a control */
 }
 .detail-meta dt {
   flex: 0 0 64px;
