@@ -1388,6 +1388,17 @@ kbd {
   text-decoration: line-through;
   text-decoration-thickness: 1px;
 }
+/* Linkified URLs in task notes (lib/linkify.tsx) — the brand's quiet green. */
+.notes a,
+.detail-notes a {
+  color: var(--status-done);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.notes a:hover,
+.detail-notes a:hover {
+  text-decoration: underline;
+}
 .detail-notes {
   margin: 0;
   font-size: 13.5px;

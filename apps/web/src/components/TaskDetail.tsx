@@ -1,6 +1,7 @@
 import type { Task } from "@memoria/sheet-core";
 import { useEffect, useRef, useState } from "react";
 import { formatDueDateLong, formatFullDate, isOverdue } from "../lib/dates.js";
+import { Linkify } from "../lib/linkify.js";
 import { STATUS_LABEL, STATUS_PILL_CLASS } from "../lib/statusMeta.js";
 import { tagColorClass } from "../lib/tagColor.js";
 import { TaskForm, type TaskFormValues } from "./TaskForm.js";
@@ -120,7 +121,11 @@ export function TaskDetail({
                 ))}
               </div>
             )}
-            {task.notes && <p className="detail-notes">{task.notes}</p>}
+            {task.notes && (
+              <p className="detail-notes">
+                <Linkify text={task.notes} />
+              </p>
+            )}
             <dl className="detail-meta">
               {task.dueDate && (
                 <div>

@@ -2,6 +2,7 @@ import { Draggable } from "@hello-pangea/dnd";
 import type { Task } from "@memoria/sheet-core";
 import { useState } from "react";
 import { formatDueDate, isOverdue } from "../lib/dates.js";
+import { Linkify } from "../lib/linkify.js";
 import type { TaskDetailMode } from "./TaskDetail.js";
 
 interface CardProps {
@@ -106,7 +107,11 @@ export function Card({ task, index, readOnly, onOpen, onComplete }: CardProps) {
                   </div>
                 )}
               </div>
-              {task.notes && <p className="notes">{task.notes}</p>}
+              {task.notes && (
+                <p className="notes">
+                  <Linkify text={task.notes} />
+                </p>
+              )}
               {/* Meta line = due date only. No created date (noise on a board), no
                   agent chip, and no tags — provenance and tags live in the detail
                   dialog. No due date → no meta line at all. */}
