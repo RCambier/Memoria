@@ -714,6 +714,25 @@ button:focus-visible {
   min-width: 72px;
   font-size: 12px;
 }
+/* The detail sheet's "+ Add tag" affordance: a ghost chip that swaps into
+   the tag input when tapped (TagsEditor). */
+.tag-add {
+  border: 1px dashed var(--line-strong);
+  background: none;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tag-add:hover {
+  color: var(--ink-mid);
+  background: var(--bg-subtle);
+  border-color: var(--ink-faint);
+}
 .tag-remove {
   border: none;
   background: none;
@@ -1991,6 +2010,10 @@ kbd {
   .composer-schedule,
   .composer-blocked-event {
     font-size: 14px;
+  }
+  .tag-add {
+    font-size: 12.5px;
+    padding: 4px 12px;
   }
   .btn-sm {
     min-height: 40px;
