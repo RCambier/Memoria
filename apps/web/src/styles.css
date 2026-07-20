@@ -1,38 +1,39 @@
-/* "Quiet" palette — design direction 1a from the Memoria design project. */
+/* "Linen" palette — design 8a: moss ink on warm paper, sage as the one
+   accent, terracotta for due dates. */
 :root {
-  --bg: #ffffff;
-  --bg-subtle: #f1f1ef;
-  --ink: #1a1a1a;
-  --ink-mid: #54544f;
-  --ink-muted: #7a7a76;
-  --ink-faint: #a9a9a5;
-  --line: #ececea;
-  --line-strong: #e4e4e1;
+  --bg: #fbfaf7;
+  --bg-subtle: #f0eee7;
+  --ink: #26251f;
+  --ink-mid: #5a574c;
+  --ink-muted: #7c7a70;
+  --ink-faint: #b0aea3;
+  --line: #eeece6;
+  --line-strong: #e4e1d6;
   --card: #ffffff;
-  --card-done-bg: #fafaf9;
-  --card-done-line: #efefed;
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  --card-shadow-hover: 0 3px 10px rgba(0, 0, 0, 0.07);
-  --accent: #1a1a1a;
-  --accent-contrast: #ffffff;
-  --status-backlog: #54544f;
-  --status-backlog-bg: #f1f1ef;
-  --status-backlog-dot: #a9a9a5;
-  --status-progress: #2d5e8e;
-  --status-progress-bg: #eaf2fa;
-  --status-progress-dot: #3f7fbf;
-  --status-done: #3e6b4f;
-  --status-done-bg: #ecf4ee;
-  --status-done-dot: #4c9a66;
-  --warn: #c48a3f;
-  --warn-bg: #faf3e8;
-  --warn-line: #eddcc0;
-  --danger: #b3452f;
-  --danger-bg: #faefec;
-  --danger-line: #eccfc6;
-  /* Agent-written notes: the warm paper tint from design 5a. */
-  --note-agent-bg: #fffdf5;
-  --note-agent-line: #f0ead6;
+  --card-done-bg: #f5f4ef;
+  --card-done-line: #eeece6;
+  --card-shadow: 0 1px 3px rgba(46, 59, 46, 0.06);
+  --card-shadow-hover: 0 3px 12px rgba(46, 59, 46, 0.1);
+  --accent: #2e3b2e;
+  --accent-contrast: #fbfaf7;
+  --status-backlog: #7c7a70;
+  --status-backlog-bg: #f0eee7;
+  --status-backlog-dot: #b0aea3;
+  --status-progress: #3f6a52;
+  --status-progress-bg: #ebf0ea;
+  --status-progress-dot: #63805f;
+  --status-done: #63805f;
+  --status-done-bg: #eef2ec;
+  --status-done-dot: #63805f;
+  --warn: #a2603c;
+  --warn-bg: #f7efe6;
+  --warn-line: #ecdcc9;
+  --danger: #a2452f;
+  --danger-bg: #f7ece8;
+  --danger-line: #ecd2c8;
+  /* Agent-written notes: a warmer paper than the base. */
+  --note-agent-bg: #fbf7ec;
+  --note-agent-line: #efe9d6;
   /* Tag palette — deterministic per tag name (see lib/tagColor.ts). */
   --tag0-bg: #f1f1ef;
   --tag0-fg: #6b6a64;
