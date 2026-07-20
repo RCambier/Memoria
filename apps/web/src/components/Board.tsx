@@ -19,7 +19,10 @@ interface BoardProps {
   readOnly: boolean;
   onAdd: (status: Status, input: NewTaskInput) => void;
   onMove: (id: string, status: Status, dropIndex: number) => void;
-  onEdit: (id: string, patch: { title: string; notes: string; dueDate: string; tags: string[] }) => void;
+  onEdit: (
+    id: string,
+    patch: { title: string; notes: string; dueDate: string; blockedUntil: string; tags: string[] },
+  ) => void;
   onDelete: (id: string) => void;
 }
 

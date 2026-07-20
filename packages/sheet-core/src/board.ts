@@ -2,6 +2,7 @@ import { locateRowById, type SheetError } from "./grid.js";
 import { generateId } from "./id.js";
 import { boardOrder, topSortOrder } from "./ordering.js";
 import { parseSheet, type ParseResult } from "./parse.js";
+import { mergeSchedule } from "./schedule.js";
 import { taskToRow } from "./serialize.js";
 import type { SheetStore } from "./store.js";
 import { STATUSES, type Source, type Status, type Task } from "./types.js";
@@ -61,6 +62,7 @@ export interface NewTaskInput {
   notes?: string;
   status?: Status;
   dueDate?: string;
+  blockedUntil?: string;
   tags?: string[];
 }
 
@@ -76,7 +78,7 @@ export function buildTask(columnOrders: readonly number[], input: NewTaskInput, 
     source,
     createdAt: now,
     updatedAt: now,
-    dueDate: input.dueDate ?? "",
+    ...mergeSchedule({ dueDate: "", blockedUntil: "" }, input),
     tags: input.tags ?? [],
   };
 }
@@ -110,7 +112,7 @@ export async function addTask(store: SheetStore, input: NewTaskInput, source: So
 export async function updateTask(
   store: SheetStore,
   id: string,
-  patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] },
+  patch: { title?: string; notes?: string; dueDate?: string; blockedUntil?: string; tags?: string[] },
 ): Promise<Task> {
   const { tasks, rawRows } = await readValidTasks(store);
   const current = tasks.find((t) => t.id === id);
@@ -120,7 +122,7 @@ export async function updateTask(
     ...current,
     title: patch.title ?? current.title,
     notes: patch.notes ?? current.notes,
-    dueDate: patch.dueDate ?? current.dueDate,
+    ...mergeSchedule(current, patch),
     tags: patch.tags ?? current.tags,
     updatedAt: new Date().toISOString(),
   };

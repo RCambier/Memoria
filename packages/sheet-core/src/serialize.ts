@@ -55,6 +55,8 @@ export function rowToTask(row: SheetRow): Task {
     throw new RowValidationError("due_date", cell(row, 8));
   }
   const tags = parseTags(cell(row, 9));
+  // Free-form by design: a date (YYYY-MM-DD) or an event ("Trip done").
+  const blockedUntil = cell(row, 10).trim();
 
   return {
     id,
@@ -67,6 +69,7 @@ export function rowToTask(row: SheetRow): Task {
     updatedAt,
     dueDate,
     tags,
+    blockedUntil,
   };
 }
 
@@ -91,6 +94,7 @@ export function taskToRow(task: Task): SheetRow {
     task.updatedAt,
     task.dueDate,
     task.tags.join(", "),
+    task.blockedUntil,
   ];
 }
 

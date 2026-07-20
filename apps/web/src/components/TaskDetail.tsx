@@ -1,6 +1,12 @@
 import type { Task } from "@memoria/sheet-core";
 import { useEffect, useRef, useState } from "react";
-import { formatDueDateLong, formatFullDate, isOverdue } from "../lib/dates.js";
+import {
+  formatBlockedUntilLong,
+  formatDueDateLong,
+  formatFullDate,
+  isBlockLifted,
+  isOverdue,
+} from "../lib/dates.js";
 import { Linkify } from "../lib/linkify.js";
 import { STATUS_LABEL, STATUS_PILL_CLASS } from "../lib/statusMeta.js";
 import { tagColorClass } from "../lib/tagColor.js";
@@ -14,7 +20,13 @@ interface TaskDetailProps {
   initialMode: TaskDetailMode;
   readOnly: boolean;
   onClose: () => void;
-  onSave: (patch: { title: string; notes: string; dueDate: string; tags: string[] }) => void;
+  onSave: (patch: {
+    title: string;
+    notes: string;
+    dueDate: string;
+    blockedUntil: string;
+    tags: string[];
+  }) => void;
   /** Marks the task done and closes the dialog. */
   onComplete: () => void;
   onDelete: () => void;
@@ -104,7 +116,13 @@ export function TaskDetail({
 
         {mode === "edit" ? (
           <TaskForm
-            initial={{ title: task.title, notes: task.notes, dueDate: task.dueDate, tags: task.tags }}
+            initial={{
+              title: task.title,
+              notes: task.notes,
+              dueDate: task.dueDate,
+              blockedUntil: task.blockedUntil,
+              tags: task.tags,
+            }}
             submitLabel="Save"
             onSubmit={handleSave}
             onCancel={() => setMode("view")}
@@ -133,6 +151,15 @@ export function TaskDetail({
                   <dd className={isOverdue(task) ? "overdue" : undefined}>
                     ⚑ {formatDueDateLong(task.dueDate)}
                     {isOverdue(task) && " · overdue"}
+                  </dd>
+                </div>
+              )}
+              {task.blockedUntil && (
+                <div>
+                  <dt>Blocked</dt>
+                  <dd className={isBlockLifted(task) ? "overdue" : undefined}>
+                    ⏸︎ until {formatBlockedUntilLong(task.blockedUntil)}
+                    {isBlockLifted(task) && " · ready now"}
                   </dd>
                 </div>
               )}

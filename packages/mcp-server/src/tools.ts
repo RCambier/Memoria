@@ -21,6 +21,15 @@ const dueDateSchema = z
   .optional()
   .describe("Due date as YYYY-MM-DD; pass an empty string to clear it.");
 
+const blockedUntilSchema = z
+  .string()
+  .optional()
+  .describe(
+    'Blocks the task until a date (YYYY-MM-DD) or an event (free text, e.g. "Trip done"). ' +
+      "A task has either a due date or a blocked-until, never both — setting one clears the other. " +
+      "Pass an empty string to clear it.",
+  );
+
 const tagsSchema = z
   .array(
     z
@@ -47,6 +56,15 @@ function taskText(task: Task): string {
 function noteText(note: Note): string {
   return JSON.stringify(note, null, 2);
 }
+
+/** Rejects a call that sets both scheduling fields at once — they're mutually exclusive. */
+function bothScheduled(due_date?: string, blocked_until?: string): boolean {
+  return Boolean(due_date) && Boolean(blocked_until);
+}
+
+const BOTH_SCHEDULED_MESSAGE =
+  "A task can have a due date or a blocked-until, not both — set only one " +
+  '(pass "" to explicitly clear the other).';
 
 function errorResult(err: unknown): { content: [{ type: "text"; text: string }]; isError: true } {
   const message = err instanceof Error ? err.message : String(err);
@@ -104,12 +122,18 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
       notes: z.string().optional(),
       status: statusSchema.optional().describe("Defaults to backlog."),
       due_date: dueDateSchema,
+      blocked_until: blockedUntilSchema,
       tags: tagsSchema,
     },
-    async ({ board_id, title, notes, status, due_date, tags }) => {
+    async ({ board_id, title, notes, status, due_date, blocked_until, tags }) => {
       try {
+        if (bothScheduled(due_date, blocked_until)) throw new Error(BOTH_SCHEDULED_MESSAGE);
         const client = await resolveBoard(catalog, board_id);
-        const task = await board.addTask(client, { title, notes, status, dueDate: due_date, tags }, "agent");
+        const task = await board.addTask(
+          client,
+          { title, notes, status, dueDate: due_date, blockedUntil: blocked_until, tags },
+          "agent",
+        );
         return { content: [{ type: "text", text: taskText(task) }] };
       } catch (err) {
         return errorResult(err);
@@ -119,20 +143,28 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
 
   server.tool(
     "update_task",
-    "Edit a task's title, notes, due date, and/or tags. Fields you omit are left unchanged. " +
-      "Get the id from list_tasks.",
+    "Edit a task's title, notes, due date, blocked-until, and/or tags. Fields you omit are " +
+      "left unchanged. Get the id from list_tasks.",
     {
       board_id: boardIdSchema,
       id: z.string().min(1),
       title: z.string().min(1).optional(),
       notes: z.string().optional(),
       due_date: dueDateSchema,
+      blocked_until: blockedUntilSchema,
       tags: tagsSchema,
     },
-    async ({ board_id, id, title, notes, due_date, tags }) => {
+    async ({ board_id, id, title, notes, due_date, blocked_until, tags }) => {
       try {
+        if (bothScheduled(due_date, blocked_until)) throw new Error(BOTH_SCHEDULED_MESSAGE);
         const client = await resolveBoard(catalog, board_id);
-        const task = await board.updateTask(client, id, { title, notes, dueDate: due_date, tags });
+        const task = await board.updateTask(client, id, {
+          title,
+          notes,
+          dueDate: due_date,
+          blockedUntil: blocked_until,
+          tags,
+        });
         return { content: [{ type: "text", text: taskText(task) }] };
       } catch (err) {
         return errorResult(err);

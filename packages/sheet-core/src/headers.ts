@@ -8,9 +8,10 @@
 export const SHEET_TAB_NAME = "Tasks";
 
 /**
- * Column headers, in column order (A..J). This is the contract both clients
+ * Column headers, in column order (A..K). This is the contract both clients
  * validate against — the header row of the sheet must match exactly (or
- * match `LEGACY_HEADERS`, the pre-due_date/tags shape; see `parseSheet`).
+ * match one of `LEGACY_HEADER_SHAPES`, the older generations; see
+ * `parseSheet`).
  */
 export const HEADERS = [
   "id",
@@ -23,15 +24,24 @@ export const HEADERS = [
   "updated_at",
   "due_date",
   "tags",
+  "blocked_until",
 ] as const;
 
+/** The A1 range covering the whole tab (header + data). */
+export const SHEET_RANGE = `${SHEET_TAB_NAME}!A:${String.fromCharCode(64 + HEADERS.length)}`;
+
 /**
- * The original 8-column header (before `due_date` and `tags`). Sheets with
- * this exact header still parse — their tasks just have no due date or tags
- * — and the web app extends the header in place (an additive, non-destructive
- * write of two new header cells) the first time it loads one.
+ * Every previous generation of the header, oldest first: the original
+ * 8-column shape (before `due_date` and `tags`) and the 10-column shape
+ * (before `blocked_until`). Sheets with one of these headers still parse —
+ * the missing fields are just empty — and the web app extends the header in
+ * place (an additive, non-destructive write of the new header cells) the
+ * first time it loads one.
  */
-export const LEGACY_HEADERS = HEADERS.slice(0, 8);
+export const LEGACY_HEADER_SHAPES: readonly (readonly string[])[] = [
+  HEADERS.slice(0, 8),
+  HEADERS.slice(0, 10),
+];
 
 /** Google Drive `appProperties` key used to tag spreadsheets created by this app. */
 export const APP_PROPERTY_KEY = "todosBoard";

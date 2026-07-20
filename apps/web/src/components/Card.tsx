@@ -1,7 +1,7 @@
 import { Draggable } from "@hello-pangea/dnd";
 import type { Task } from "@memoria/sheet-core";
 import { useState } from "react";
-import { formatDueDate, isOverdue } from "../lib/dates.js";
+import { formatBlockedUntil, formatDueDate, isBlockLifted, isOverdue } from "../lib/dates.js";
 import { Linkify } from "../lib/linkify.js";
 import type { TaskDetailMode } from "./TaskDetail.js";
 
@@ -112,14 +112,29 @@ export function Card({ task, index, readOnly, onOpen, onComplete }: CardProps) {
                   <Linkify text={task.notes} />
                 </p>
               )}
-              {/* Meta line = due date only. No created date (noise on a board), no
-                  agent chip, and no tags — provenance and tags live in the detail
-                  dialog. No due date → no meta line at all. */}
-              {task.dueDate && (
+              {/* Meta line = the schedule only (due date or blocked-until). No
+                  created date (noise on a board), no agent chip, and no tags —
+                  provenance and tags live in the detail dialog. No schedule →
+                  no meta line at all. */}
+              {(task.dueDate || task.blockedUntil) && (
                 <div className="meta">
-                  <span className={`due${isOverdue(task) ? " overdue" : ""}`} title={`Due ${task.dueDate}`}>
-                    ⚑ {formatDueDate(task.dueDate)}
-                  </span>
+                  {task.dueDate && (
+                    <span className={`due${isOverdue(task) ? " overdue" : ""}`} title={`Due ${task.dueDate}`}>
+                      ⚑ {formatDueDate(task.dueDate)}
+                    </span>
+                  )}
+                  {task.blockedUntil && (
+                    <span
+                      className={`blocked${isBlockLifted(task) ? " lifted" : ""}`}
+                      title={
+                        isBlockLifted(task)
+                          ? `Was blocked until ${task.blockedUntil} — ready now`
+                          : `Blocked until ${task.blockedUntil}`
+                      }
+                    >
+                      ⏸︎ {formatBlockedUntil(task.blockedUntil)}
+                    </span>
+                  )}
                 </div>
               )}
             </div>

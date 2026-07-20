@@ -491,6 +491,17 @@ button:focus-visible {
   color: var(--warn);
   font-weight: 500;
 }
+.blocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+/* The block's date has passed — the task is actionable again and wants eyes. */
+.blocked.lifted {
+  color: var(--warn);
+  font-weight: 500;
+}
 
 .card.dragging {
   opacity: 0.9;
@@ -659,6 +670,27 @@ button:focus-visible {
   min-width: 0;
   flex: 0 1 auto;
   color-scheme: light;
+}
+.composer-schedule {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 0;
+  outline: none;
+  cursor: pointer;
+}
+.composer-blocked-event {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 0;
+  outline: none;
+  min-width: 0;
+  flex: 1 1 90px;
 }
 .composer-buttons {
   display: flex;
@@ -1766,7 +1798,9 @@ kbd {
     margin-top: auto;
   }
   .composer-tags .tag-input,
-  .composer-date {
+  .composer-date,
+  .composer-schedule,
+  .composer-blocked-event {
     font-size: 14px;
   }
   .btn-sm {

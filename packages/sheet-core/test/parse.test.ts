@@ -228,8 +228,7 @@ describe("parseSheet — row errors", () => {
   });
 });
 
-describe("parseSheet — legacy 8-column header", () => {
-  const legacyHeader = [...HEADERS.slice(0, 8)];
+describe("parseSheet — legacy headers", () => {
   const legacyRow = [
     "id9",
     "Old task",
@@ -241,13 +240,25 @@ describe("parseSheet — legacy 8-column header", () => {
     "2026-01-01T00:00:00.000Z",
   ];
 
-  it("parses and flags legacyHeader", () => {
-    const result = parseSheet([legacyHeader, legacyRow]);
+  it("parses the original 8-column header and flags legacyHeader", () => {
+    const result = parseSheet([[...HEADERS.slice(0, 8)], legacyRow]);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.legacyHeader).toBe(true);
       expect(result.tasks[0]?.dueDate).toBe("");
       expect(result.tasks[0]?.tags).toEqual([]);
+      expect(result.tasks[0]?.blockedUntil).toBe("");
+    }
+  });
+
+  it("parses the 10-column (pre-blocked_until) header and flags legacyHeader", () => {
+    const row = [...legacyRow, "2026-07-21", "errand"];
+    const result = parseSheet([[...HEADERS.slice(0, 10)], row]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.legacyHeader).toBe(true);
+      expect(result.tasks[0]?.dueDate).toBe("2026-07-21");
+      expect(result.tasks[0]?.blockedUntil).toBe("");
     }
   });
 
@@ -276,6 +287,17 @@ describe("parseSheet — due_date and tags", () => {
     if (result.ok) {
       expect(result.tasks[0]?.dueDate).toBe("2026-07-21");
       expect(result.tasks[0]?.tags).toEqual(["errand", "home"]);
+    }
+  });
+
+  it("accepts blocked_until as a date or as free-form event text", () => {
+    const byDate = [...goodRow1.slice(0, 8), "", "", "2026-08-01"];
+    const byEvent = [...goodRow2.slice(0, 8), "", "", "Trip done"];
+    const result = parseSheet([[...HEADERS], byDate, byEvent]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.tasks[0]?.blockedUntil).toBe("2026-08-01");
+      expect(result.tasks[1]?.blockedUntil).toBe("Trip done");
     }
   });
 });

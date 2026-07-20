@@ -95,6 +95,13 @@ describe("addTask", () => {
     const task = await board.addTask(store, { title: "New task" }, "agent");
     expect(task.notes).toBe("");
   });
+
+  it("accepts a blockedUntil (date or event) on creation", async () => {
+    const store = new FakeSheetStore();
+    const task = await board.addTask(store, { title: "Later", blockedUntil: "Trip done" }, "agent");
+    expect(task.blockedUntil).toBe("Trip done");
+    expect(task.dueDate).toBe("");
+  });
 });
 
 describe("updateTask", () => {
@@ -119,6 +126,30 @@ describe("updateTask", () => {
   it("throws TaskNotFoundError for an unknown id", async () => {
     const store = new FakeSheetStore([row("a", "A", "backlog", 1)]);
     await expect(board.updateTask(store, "missing", { title: "x" })).rejects.toThrow(TaskNotFoundError);
+  });
+
+  it("setting blockedUntil clears an existing due date (either/or)", async () => {
+    const store = new FakeSheetStore([row("a", "A", "backlog", 1)]);
+    await board.updateTask(store, "a", { dueDate: "2026-08-01" });
+    const task = await board.updateTask(store, "a", { blockedUntil: "Trip done" });
+    expect(task.blockedUntil).toBe("Trip done");
+    expect(task.dueDate).toBe("");
+  });
+
+  it("setting a due date clears an existing blockedUntil (either/or)", async () => {
+    const store = new FakeSheetStore([row("a", "A", "backlog", 1)]);
+    await board.updateTask(store, "a", { blockedUntil: "2026-09-15" });
+    const task = await board.updateTask(store, "a", { dueDate: "2026-08-01" });
+    expect(task.dueDate).toBe("2026-08-01");
+    expect(task.blockedUntil).toBe("");
+  });
+
+  it('clearing one schedule field with "" leaves the other alone', async () => {
+    const store = new FakeSheetStore([row("a", "A", "backlog", 1)]);
+    await board.updateTask(store, "a", { dueDate: "2026-08-01" });
+    const task = await board.updateTask(store, "a", { blockedUntil: "" });
+    expect(task.dueDate).toBe("2026-08-01");
+    expect(task.blockedUntil).toBe("");
   });
 });
 

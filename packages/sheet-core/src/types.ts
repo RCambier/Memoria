@@ -26,6 +26,12 @@ export interface Task {
   updatedAt: string;
   /** Due date as `YYYY-MM-DD`, or `""` for none. */
   dueDate: string;
+  /**
+   * What the task is waiting on before it's actionable: a `YYYY-MM-DD` date
+   * or a free-text event (e.g. "Trip done"). `""` = not blocked. A task has
+   * either a due date or a blocked-until, never both — see `mergeSchedule`.
+   */
+  blockedUntil: string;
   /** Free-form labels. Stored comma-separated in the sheet, so names can't contain commas. */
   tags: string[];
 }

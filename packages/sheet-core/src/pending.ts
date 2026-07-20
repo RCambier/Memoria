@@ -1,3 +1,4 @@
+import { mergeSchedule } from "./schedule.js";
 import type { Status, Task } from "./types.js";
 
 /**
@@ -18,7 +19,7 @@ export type PendingOp =
   | {
       kind: "edit";
       id: string;
-      patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] };
+      patch: { title?: string; notes?: string; dueDate?: string; blockedUntil?: string; tags?: string[] };
       /** ISO timestamp of the local edit — becomes `updatedAt` in the projection. */
       at: string;
     }
@@ -45,7 +46,9 @@ export function applyPending(tasks: readonly Task[], ops: readonly PendingOp[]):
         if (!t) break;
         if (op.patch.title !== undefined) t.title = op.patch.title;
         if (op.patch.notes !== undefined) t.notes = op.patch.notes;
-        if (op.patch.dueDate !== undefined) t.dueDate = op.patch.dueDate;
+        // Same either/or rule as board.updateTask, so the projection never
+        // disagrees with what the flushed write will produce.
+        Object.assign(t, mergeSchedule(t, op.patch));
         if (op.patch.tags !== undefined) t.tags = [...op.patch.tags];
         t.updatedAt = op.at;
         break;
@@ -100,7 +103,7 @@ export function enqueueOp(ops: readonly PendingOp[], op: PendingOp): PendingOp[]
             ...add.task,
             title: op.patch.title ?? add.task.title,
             notes: op.patch.notes ?? add.task.notes,
-            dueDate: op.patch.dueDate ?? add.task.dueDate,
+            ...mergeSchedule(add.task, op.patch),
             tags: op.patch.tags ? [...op.patch.tags] : add.task.tags,
             updatedAt: op.at,
           },

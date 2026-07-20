@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { isDateOnly } from "../lib/dates.js";
 import { tagColorClass } from "../lib/tagColor.js";
 
 export interface TaskFormValues {
   title: string;
   notes: string;
   dueDate: string;
+  blockedUntil: string;
   tags: string[];
 }
+
+/** The one scheduling slot: a task is either due, blocked, or neither. */
+type ScheduleKind = "none" | "due" | "blocked";
 
 interface TaskFormProps {
   initial?: TaskFormValues;
@@ -16,15 +21,23 @@ interface TaskFormProps {
 }
 
 /**
- * The one task form, covering the full model: title, description, due date,
- * tags. The composer uses it empty ("Add task"); a card in edit mode seeds
- * it with the task's current values ("Save"). Enter on the title submits;
- * Escape cancels from anywhere.
+ * The one task form, covering the full model: title, description, schedule
+ * (due date or blocked-until — one slot, never both), tags. The composer
+ * uses it empty ("Add task"); a card in edit mode seeds it with the task's
+ * current values ("Save"). Enter on the title submits; Escape cancels from
+ * anywhere.
  */
 export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormProps) {
+  const initialBlocked = initial?.blockedUntil ?? "";
   const [title, setTitle] = useState(initial?.title ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [scheduleKind, setScheduleKind] = useState<ScheduleKind>(
+    initialBlocked ? "blocked" : initial?.dueDate ? "due" : "none",
+  );
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
+  // A blocked-until is a date OR an event; filling one input empties the other.
+  const [blockedDate, setBlockedDate] = useState(isDateOnly(initialBlocked) ? initialBlocked : "");
+  const [blockedEvent, setBlockedEvent] = useState(isDateOnly(initialBlocked) ? "" : initialBlocked);
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
   const [tagDraft, setTagDraft] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
@@ -48,7 +61,13 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
       onCancel();
       return;
     }
-    onSubmit({ title: trimmed, notes: notes.trim(), dueDate, tags: commitTagDraft() });
+    onSubmit({
+      title: trimmed,
+      notes: notes.trim(),
+      dueDate: scheduleKind === "due" ? dueDate : "",
+      blockedUntil: scheduleKind === "blocked" ? blockedEvent.trim() || blockedDate : "",
+      tags: commitTagDraft(),
+    });
   }
 
   return (
@@ -112,13 +131,50 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
       </div>
 
       <div className="composer-actions">
-        <input
-          type="date"
-          className="composer-date"
-          aria-label="Due date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
+        <select
+          className="composer-schedule"
+          aria-label="Schedule"
+          value={scheduleKind}
+          onChange={(e) => setScheduleKind(e.target.value as ScheduleKind)}
+        >
+          <option value="none">No date</option>
+          <option value="due">Due</option>
+          <option value="blocked">Blocked until</option>
+        </select>
+        {scheduleKind === "due" && (
+          <input
+            type="date"
+            className="composer-date"
+            aria-label="Due date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+        )}
+        {scheduleKind === "blocked" && (
+          <>
+            <input
+              type="date"
+              className="composer-date"
+              aria-label="Blocked until date"
+              value={blockedDate}
+              onChange={(e) => {
+                setBlockedDate(e.target.value);
+                if (e.target.value) setBlockedEvent("");
+              }}
+            />
+            <input
+              type="text"
+              className="composer-blocked-event"
+              aria-label="Blocked until event"
+              placeholder="or an event — “Trip done”"
+              value={blockedEvent}
+              onChange={(e) => {
+                setBlockedEvent(e.target.value);
+                if (e.target.value.trim()) setBlockedDate("");
+              }}
+            />
+          </>
+        )}
         <div className="composer-buttons">
           <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
             Cancel

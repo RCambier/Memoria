@@ -16,6 +16,7 @@ function task(id: string, overrides: Partial<Task> = {}): Task {
     updatedAt: "2026-01-01T00:00:00.000Z",
     dueDate: "2026-07-21",
     tags: [],
+    blockedUntil: "",
     ...overrides,
   };
 }

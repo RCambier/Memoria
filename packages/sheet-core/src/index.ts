@@ -1,4 +1,10 @@
-export { SHEET_TAB_NAME, HEADERS, LEGACY_HEADERS, APP_PROPERTY_KEY, APP_PROPERTY_VALUE } from "./headers.js";
+export {
+  SHEET_TAB_NAME,
+  HEADERS,
+  LEGACY_HEADER_SHAPES,
+  APP_PROPERTY_KEY,
+  APP_PROPERTY_VALUE,
+} from "./headers.js";
 export { STATUSES, type Status, type Source, type Task, type SheetRow } from "./types.js";
 export { topSortOrder, betweenSortOrder, boardOrder } from "./ordering.js";
 export { taskToRow, isBlankRow, RowValidationError } from "./serialize.js";

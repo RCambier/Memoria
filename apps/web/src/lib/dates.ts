@@ -28,10 +28,38 @@ export function formatDueDateLong(dueDate: string): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+function localToday(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
 /** A due date is overdue once the local calendar day has passed — unless the task is done. */
 export function isOverdue(task: Task): boolean {
   if (!task.dueDate || task.status === "done") return false;
-  const today = new Date();
-  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  return task.dueDate < localToday;
+  return task.dueDate < localToday();
+}
+
+/** True for a bare `YYYY-MM-DD` value — how a blocked-until date is told apart from an event. */
+export function isDateOnly(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+/** Formats a blocked-until value: dates as e.g. "Jul 21", event text as itself. */
+export function formatBlockedUntil(value: string): string {
+  return isDateOnly(value) ? formatDueDate(value) : value;
+}
+
+/** Like `formatBlockedUntil` but dates include the year, for the task detail view. */
+export function formatBlockedUntilLong(value: string): string {
+  return isDateOnly(value) ? formatDueDateLong(value) : value;
+}
+
+/**
+ * A date block lifts the local day it names ("blocked until Jul 21" = free
+ * to start on Jul 21). Event blocks ("Trip done") never lift on their own —
+ * the user clears them.
+ */
+export function isBlockLifted(task: Task): boolean {
+  if (!task.blockedUntil || task.status === "done" || !isDateOnly(task.blockedUntil)) return false;
+  return task.blockedUntil <= localToday();
 }

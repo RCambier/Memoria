@@ -1,5 +1,5 @@
 import { parseItemRows, type SheetError } from "./grid.js";
-import { HEADERS, LEGACY_HEADERS } from "./headers.js";
+import { HEADERS, LEGACY_HEADER_SHAPES } from "./headers.js";
 import { RowValidationError, rowToTask } from "./serialize.js";
 import { STATUSES, type SheetRow, type Task } from "./types.js";
 
@@ -10,10 +10,10 @@ export type ParseResult =
       ok: true;
       tasks: Task[];
       /**
-       * True when the sheet still has the pre-`due_date`/`tags` 8-column
-       * header. Tasks parse fine (those fields are just empty); the web app
-       * uses this flag to extend the header row in place — an additive write
-       * of two new header cells, never touching data.
+       * True when the sheet still has an older header generation (see
+       * `LEGACY_HEADER_SHAPES`). Tasks parse fine (the missing fields are
+       * just empty); the web app uses this flag to extend the header row in
+       * place — an additive write of new header cells, never touching data.
        */
       legacyHeader: boolean;
     }
@@ -93,7 +93,9 @@ function fieldErrorMessage(row: number, err: RowValidationError): SheetError {
  * column, offending value, and a plain-English sentence).
  */
 export function parseSheet(rows: readonly SheetRow[]): ParseResult {
-  const legacyHeader = rows[0] !== undefined && matchesHeaders(rows[0], LEGACY_HEADERS);
+  const headerRow = rows[0];
+  const legacyHeader =
+    headerRow !== undefined && LEGACY_HEADER_SHAPES.some((shape) => matchesHeaders(headerRow, shape));
   if (!legacyHeader) {
     const hErr = headerError(rows[0]);
     if (hErr) return { ok: false, error: hErr };

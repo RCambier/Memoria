@@ -26,7 +26,13 @@ describe("rowToTask", () => {
       updatedAt: "2026-01-02T00:00:00.000Z",
       dueDate: "",
       tags: [],
+      blockedUntil: "",
     });
+  });
+
+  it("reads blocked_until from column K — a date or free-form event text", () => {
+    expect(rowToTask([...validRow, "", "", "2026-08-01"]).blockedUntil).toBe("2026-08-01");
+    expect(rowToTask([...validRow, "", "", " Trip done "]).blockedUntil).toBe("Trip done");
   });
 
   it("trims whitespace from id, title, status", () => {
@@ -228,6 +234,24 @@ describe("taskToRow", () => {
       updatedAt: "2026-01-02T00:00:00.000Z",
       dueDate: "2026-07-21",
       tags: ["errand", "home"],
+      blockedUntil: "",
+    };
+    expect(rowToTask(taskToRow(task))).toEqual(task);
+  });
+
+  it("round-trips a blocked-until event", () => {
+    const task: Task = {
+      id: "id1",
+      title: "Book flights",
+      status: "backlog",
+      sortOrder: 0,
+      notes: "",
+      source: "user",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      dueDate: "",
+      tags: [],
+      blockedUntil: "Trip done",
     };
     expect(rowToTask(taskToRow(task))).toEqual(task);
   });
@@ -244,6 +268,7 @@ describe("taskToRow", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
       dueDate: "2026-07-21",
       tags: ["errand", "home"],
+      blockedUntil: "",
     };
     expect(taskToRow(task)).toEqual([
       "id1",
@@ -256,6 +281,7 @@ describe("taskToRow", () => {
       "2026-01-01T00:00:00.000Z",
       "2026-07-21",
       "errand, home",
+      "",
     ]);
   });
 });

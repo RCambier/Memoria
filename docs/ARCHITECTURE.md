@@ -173,20 +173,20 @@ board (or notes collection) can omit the id everywhere.
 Tools (all mutations take an `id` from the matching list tool; every write
 re-locates the row by ID first, exactly like the web app):
 
-| tool                    | input                                                                       | behavior                     |
-| ----------------------- | --------------------------------------------------------------------------- | ---------------------------- |
-| `list_boards`           | —                                                                           | boards (id, name, modified)  |
-| `list_tasks`            | optional `status` filter                                                    | tasks in board order         |
-| `add_task`              | `title`, optional `notes`, `status` (default `backlog`), `due_date`, `tags` | insert at top of column      |
-| `update_task`           | `id`, optional `title`, `notes`, `due_date`, `tags`                         | edit fields                  |
-| `move_task`             | `id`, `status`                                                              | move to top of target column |
-| `complete_task`         | `id`                                                                        | sugar for `move_task(done)`  |
-| `delete_task`           | `id`                                                                        | delete that row              |
-| `list_note_collections` | —                                                                           | notes collections            |
-| `list_notes`            | —                                                                           | notes, newest-edited first   |
-| `add_note`              | `title`, optional markdown `body`                                           | append a note                |
-| `update_note`           | `id`, optional `title`, `body` (replaces whole body)                        | edit fields                  |
-| `delete_note`           | `id`                                                                        | delete that row              |
+| tool                    | input                                                                                        | behavior                     |
+| ----------------------- | -------------------------------------------------------------------------------------------- | ---------------------------- |
+| `list_boards`           | —                                                                                            | boards (id, name, modified)  |
+| `list_tasks`            | optional `status` filter                                                                     | tasks in board order         |
+| `add_task`              | `title`, optional `notes`, `status` (default `backlog`), `due_date`, `blocked_until`, `tags` | insert at top of column      |
+| `update_task`           | `id`, optional `title`, `notes`, `due_date`, `blocked_until`, `tags`                         | edit fields                  |
+| `move_task`             | `id`, `status`                                                                               | move to top of target column |
+| `complete_task`         | `id`                                                                                         | sugar for `move_task(done)`  |
+| `delete_task`           | `id`                                                                                         | delete that row              |
+| `list_note_collections` | —                                                                                            | notes collections            |
+| `list_notes`            | —                                                                                            | notes, newest-edited first   |
+| `add_note`              | `title`, optional markdown `body`                                                            | append a note                |
+| `update_note`           | `id`, optional `title`, `body` (replaces whole body)                                         | edit fields                  |
+| `delete_note`           | `id`                                                                                         | delete that row              |
 
 No bulk or whole-sheet tools — a confused agent can damage at most one row,
 and Sheets version history covers recovery. Tasks and notes created via MCP
@@ -323,19 +323,28 @@ One tab named `Tasks`. Row 1 is the header, frozen. Columns:
 | `updated_at` | ISO 8601 string | set on every mutation                                                |
 | `due_date`   | string          | `YYYY-MM-DD` or empty; optional                                      |
 | `tags`       | string          | comma-separated labels; optional (so tag names can't contain commas) |
+| `blocked_until` | string       | `YYYY-MM-DD` **or** free-text event (e.g. `Trip done`); empty = not blocked |
 
 Validation rules (enforced identically by both clients via `sheet-core`):
 header row must match exactly; `id`, `title`, `status` required;
 `status` must be in the enum; `sort_order` must be numeric; `due_date`, if
-present, must be `YYYY-MM-DD`. Empty rows are ignored. Anything else →
-precise validation error.
+present, must be `YYYY-MM-DD`. `blocked_until` is free-form by design — a
+value matching `YYYY-MM-DD` is treated as a date (the block lifts that
+day), anything else as an event the user clears by hand. Empty rows are
+ignored. Anything else → precise validation error.
 
-**Schema evolution**: `due_date` and `tags` were added after the original
-8-column schema. A sheet with the old header still validates (its tasks
-just have empty due dates and tags), and the web app extends the header row
-in place the first time it loads such a board — an additive write of two
-header cells that never touches task rows. This keeps existing boards
-working without a migration step.
+**Due vs. blocked**: a task has *either* a due date *or* a blocked-until,
+never both — one scheduling slot. `mergeSchedule` in `sheet-core` is the
+single implementation of that rule (setting one non-empty clears the
+other), shared by the board operations and the web app's projection.
+
+**Schema evolution**: `due_date`/`tags` (columns I–J) and then
+`blocked_until` (column K) were added after the original 8-column schema.
+A sheet with either older header still validates (its tasks just have the
+new fields empty), and the web app extends the header row in place the
+first time it loads such a board — an additive write of the new header
+cells that never touches task rows. This keeps existing boards working
+without a migration step.
 
 **Ordering**: `sort_order` is a float. Insert at top = `min(column) − 1`
 (or `0` for an empty column). Drop between two cards = midpoint. No global

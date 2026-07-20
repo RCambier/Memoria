@@ -13,6 +13,7 @@ function task(id: string, overrides: Partial<Task> = {}): Task {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     dueDate: "",
+    blockedUntil: "",
     tags: [],
     ...overrides,
   };
@@ -52,6 +53,15 @@ describe("applyPending", () => {
     expect(out[0]!.tags).toEqual(["x"]);
     expect(out[0]!.notes).toBe(""); // untouched fields survive
     expect(out[0]!.updatedAt).toBe(AT);
+  });
+
+  it("mirrors the either/or schedule rule: an edit setting blockedUntil clears dueDate", () => {
+    const out = applyPending(
+      [task("a", { dueDate: "2026-08-01" })],
+      [{ kind: "edit", id: "a", patch: { blockedUntil: "Trip done" }, at: AT }],
+    );
+    expect(out[0]!.blockedUntil).toBe("Trip done");
+    expect(out[0]!.dueDate).toBe("");
   });
 
   it("applies a move's status and sortOrder", () => {

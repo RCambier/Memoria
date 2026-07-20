@@ -30,7 +30,14 @@ export function fetchBoard(token: string, spreadsheetId: string): Promise<ParseR
 /** Pure: builds the `Task` object for a new user-created task (the optimistic-UI path). */
 export function buildNewTask(
   columnOrders: readonly number[],
-  input: { title: string; notes?: string; status: Status; dueDate?: string; tags?: string[] },
+  input: {
+    title: string;
+    notes?: string;
+    status: Status;
+    dueDate?: string;
+    blockedUntil?: string;
+    tags?: string[];
+  },
 ): Task {
   return buildTask(columnOrders, input, "user");
 }
@@ -45,7 +52,7 @@ export function editTask(
   token: string,
   spreadsheetId: string,
   id: string,
-  patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] },
+  patch: { title?: string; notes?: string; dueDate?: string; blockedUntil?: string; tags?: string[] },
 ): Promise<Task> {
   return updateTask(store(token, spreadsheetId), id, patch);
 }

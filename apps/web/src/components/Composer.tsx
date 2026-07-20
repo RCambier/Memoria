@@ -4,6 +4,7 @@ export interface NewTaskInput {
   title: string;
   notes?: string;
   dueDate?: string;
+  blockedUntil?: string;
   tags?: string[];
 }
 
@@ -19,6 +20,7 @@ export function Composer({ onSubmit, onCancel }: ComposerProps) {
       title: values.title,
       notes: values.notes || undefined,
       dueDate: values.dueDate || undefined,
+      blockedUntil: values.blockedUntil || undefined,
       tags: values.tags.length > 0 ? values.tags : undefined,
     });
   }

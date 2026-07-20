@@ -37,11 +37,12 @@ interface UseBoardResult {
     notes?: string;
     status: Status;
     dueDate?: string;
+    blockedUntil?: string;
     tags?: string[];
   }) => Promise<void>;
   updateTask: (
     id: string,
-    patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] },
+    patch: { title?: string; notes?: string; dueDate?: string; blockedUntil?: string; tags?: string[] },
   ) => Promise<void>;
   /** Moves a task to `status`, inserting it at `dropIndex` among that column's other tasks. */
   moveTask: (id: string, status: Status, dropIndex: number) => Promise<void>;
@@ -307,7 +308,14 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
   );
 
   const addTask = useCallback(
-    async (input: { title: string; notes?: string; status: Status; dueDate?: string; tags?: string[] }) => {
+    async (input: {
+      title: string;
+      notes?: string;
+      status: Status;
+      dueDate?: string;
+      blockedUntil?: string;
+      tags?: string[];
+    }) => {
       const tasks = projectionRef.current;
       if (!tasks) return;
       const columnOrders = tasks.filter((t) => t.status === input.status).map((t) => t.sortOrder);
@@ -317,7 +325,10 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
   );
 
   const updateTask = useCallback(
-    async (id: string, patch: { title?: string; notes?: string; dueDate?: string; tags?: string[] }) => {
+    async (
+      id: string,
+      patch: { title?: string; notes?: string; dueDate?: string; blockedUntil?: string; tags?: string[] },
+    ) => {
       enqueue({ kind: "edit", id, patch, at: new Date().toISOString() });
     },
     [enqueue],
