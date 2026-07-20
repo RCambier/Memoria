@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTagColors } from "../lib/tagColor.js";
 import { TagChip } from "./TagChip.js";
 
@@ -11,12 +11,20 @@ interface TagsEditorProps {
 
 /**
  * The shared tag editor: colored chips (each recolorable and removable) plus a
- * type-to-add input. Comma or Enter commits a tag; Backspace on an empty input
- * peels the last one off. Used by the add composer and the task detail.
+ * quiet "+ Add tag" pill. Clicking it reveals a compact inline field — Enter
+ * or comma commits and keeps it open for the next tag, Escape or clicking away
+ * closes it, Backspace on an empty field peels the last chip off. Used by the
+ * add composer and the task detail.
  */
 export function TagsEditor({ tags, readOnly, onChange }: TagsEditorProps) {
   const tagClass = useTagColors();
   const [draft, setDraft] = useState("");
+  const [adding, setAdding] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (adding) inputRef.current?.focus();
+  }, [adding]);
 
   function commitDraft(): void {
     const t = draft.trim().replace(/,/g, "");
@@ -46,23 +54,48 @@ export function TagsEditor({ tags, readOnly, onChange }: TagsEditorProps) {
           onRemove={() => onChange(tags.filter((x) => x !== t))}
         />
       ))}
-      <input
-        type="text"
-        className="tag-input"
-        placeholder={tags.length === 0 ? "Add tag…" : ""}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
+      {adding ? (
+        <input
+          ref={inputRef}
+          type="text"
+          className="tag-input"
+          placeholder="Tag name…"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              commitDraft(); // stay open to add several in a row
+            } else if (e.key === "Escape") {
+              // Cancel just the tag entry — don't let it bubble to the task
+              // detail's window-level Escape handler, which would close the
+              // whole dialog. stopImmediatePropagation reaches that native
+              // listener; React's stopPropagation alone would not.
+              e.preventDefault();
+              e.nativeEvent.stopImmediatePropagation();
+              setDraft("");
+              setAdding(false);
+            } else if (e.key === "Backspace" && draft === "" && tags.length > 0) {
+              onChange(tags.slice(0, -1));
+            }
+          }}
+          onBlur={() => {
             commitDraft();
-          }
-          if (e.key === "Backspace" && draft === "" && tags.length > 0) {
-            onChange(tags.slice(0, -1));
-          }
-        }}
-        onBlur={commitDraft}
-      />
+            setAdding(false);
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="tag-add"
+          onClick={(e) => {
+            e.stopPropagation();
+            setAdding(true);
+          }}
+        >
+          + Add tag
+        </button>
+      )}
     </div>
   );
 }

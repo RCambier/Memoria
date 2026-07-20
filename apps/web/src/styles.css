@@ -709,10 +709,38 @@ button:focus-visible {
   align-items: center;
   gap: 5px;
 }
-.composer-tags .tag-input {
-  flex: 1;
-  min-width: 72px;
+/* Quiet "+ Add tag" pill — the resting state, so an empty editor is a small
+   affordance rather than a big empty box. */
+.tag-add {
+  border: 1px dashed var(--line-strong);
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
   font-size: 12px;
+  line-height: 1.4;
+  border-radius: 999px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.tag-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* The inline field only appears once "+ Add tag" is clicked — compact, pill-
+   shaped to match the chips, never stretching to fill the row. */
+.composer-tags .tag-input {
+  flex: 0 1 auto;
+  width: 128px;
+  min-width: 96px;
+  font-size: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: var(--card);
+  color: inherit;
+}
+.composer-tags .tag-input:focus {
+  outline: none;
 }
 .tag-remove {
   border: none;

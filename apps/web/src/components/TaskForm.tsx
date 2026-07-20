@@ -1,8 +1,7 @@
 import { MAX_CELL_CHARS } from "@memoria/sheet-core";
 import { useEffect, useRef, useState } from "react";
 import { isDateOnly } from "../lib/dates.js";
-import { useTagColors } from "../lib/tagColor.js";
-import { TagChip } from "./TagChip.js";
+import { TagsEditor } from "./TagsEditor.js";
 
 export interface TaskFormValues {
   title: string;
@@ -41,22 +40,11 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
   const [blockedDate, setBlockedDate] = useState(isDateOnly(initialBlocked) ? initialBlocked : "");
   const [blockedEvent, setBlockedEvent] = useState(isDateOnly(initialBlocked) ? "" : initialBlocked);
   const [tags, setTags] = useState<string[]>(initial?.tags ?? []);
-  const [tagDraft, setTagDraft] = useState("");
-  const tagClass = useTagColors();
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
-
-  function commitTagDraft(): string[] {
-    const t = tagDraft.trim().replace(/,/g, "");
-    setTagDraft("");
-    if (t === "" || tags.includes(t)) return tags;
-    const next = [...tags, t];
-    setTags(next);
-    return next;
-  }
 
   function submit(): void {
     const trimmed = title.trim();
@@ -69,7 +57,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
       notes: notes.trim(),
       dueDate: scheduleKind === "due" ? dueDate : "",
       blockedUntil: scheduleKind === "blocked" ? blockedEvent.trim() || blockedDate : "",
-      tags: commitTagDraft(),
+      tags,
     });
   }
 
@@ -103,34 +91,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         onChange={(e) => setNotes(e.target.value)}
       />
 
-      <div className="composer-tags">
-        {tags.map((t) => (
-          <TagChip
-            key={t}
-            name={t}
-            colorClass={tagClass(t)}
-            editable
-            onRemove={() => setTags(tags.filter((x) => x !== t))}
-          />
-        ))}
-        <input
-          type="text"
-          className="tag-input"
-          placeholder={tags.length === 0 ? "Add tag…" : ""}
-          value={tagDraft}
-          onChange={(e) => setTagDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === ",") {
-              e.preventDefault();
-              commitTagDraft();
-            }
-            if (e.key === "Backspace" && tagDraft === "" && tags.length > 0) {
-              setTags(tags.slice(0, -1));
-            }
-          }}
-          onBlur={() => commitTagDraft()}
-        />
-      </div>
+      <TagsEditor tags={tags} onChange={setTags} />
 
       <div className="composer-actions">
         <select
