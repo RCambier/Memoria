@@ -10,6 +10,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Same iOS focus-zoom guard as index.html, so it's verifiable here. -->
+    <script>
+      if (
+        /iP(hone|od|ad)/.test(navigator.userAgent) ||
+        (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+      ) {
+        document
+          .querySelector("meta[name=viewport]")
+          .setAttribute(
+            "content",
+            "width=device-width, initial-scale=1.0, maximum-scale=1"
+          );
+      }
+    </script>
     <meta name="color-scheme" content="light" />
     <title>Memoria verify harness</title>
   </head>

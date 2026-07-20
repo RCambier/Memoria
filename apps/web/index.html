@@ -3,6 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // iOS Safari auto-zooms the page when focusing an input whose font size
+      // is under 16px (the board's small inline fields: due date, schedule,
+      // tags…). maximum-scale=1 disables that focus zoom, and since iOS 10
+      // Safari ignores it for pinch gestures, so accessibility zoom keeps
+      // working. Applied only on iOS: Android browsers *do* honor
+      // maximum-scale and would lose pinch zoom (they don't focus-zoom
+      // anyway). iPadOS Safari masquerades as macOS, hence the touch check.
+      if (
+        /iP(hone|od|ad)/.test(navigator.userAgent) ||
+        (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+      ) {
+        document
+          .querySelector("meta[name=viewport]")
+          .setAttribute(
+            "content",
+            "width=device-width, initial-scale=1.0, maximum-scale=1"
+          );
+      }
+    </script>
     <meta name="color-scheme" content="light" />
     <!-- Logo 3b "Asterisk" as an inline SVG favicon; fixed colors (no CSS vars in favicons). -->
     <link
