@@ -1,5 +1,5 @@
 /** Thrown when a Google API call fails; carries the HTTP status for callers that care. */
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,

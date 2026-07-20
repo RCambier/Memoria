@@ -1,6 +1,7 @@
 import type { Note } from "@memoria/sheet-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatFullDate } from "../lib/dates.js";
+import { MAX_CELL_CHARS } from "@memoria/sheet-core";
 import { isAttachableImage, uploadAttachment } from "../notes/attachments.js";
 import { Markdown } from "./Markdown.js";
 
@@ -246,6 +247,7 @@ export function NoteEditor({
                 type="text"
                 placeholder="Title"
                 value={draftTitle}
+                maxLength={MAX_CELL_CHARS}
                 aria-label="Note title"
                 onChange={(e) => setDraftTitle(e.target.value)}
                 onKeyDown={(e) => {
@@ -260,6 +262,7 @@ export function NoteEditor({
                 className="note-body-input"
                 placeholder={"Write in markdown — paste or drag an image to attach it…"}
                 value={draftBody}
+                maxLength={MAX_CELL_CHARS}
                 aria-label="Note body (markdown)"
                 onChange={(e) => setDraftBody(e.target.value)}
                 onPaste={handlePaste}
@@ -267,9 +270,18 @@ export function NoteEditor({
               {uploadError && <p className="note-upload-error">{uploadError}</p>}
             </div>
             <div className="detail-actions note-foot">
-              <span className="note-md-hint" aria-hidden="true">
-                **bold** · # heading · - list · ![image]
-              </span>
+              {/* A Google Sheets cell caps at 50k characters — the input is
+                  hard-capped above; the counter appears near the ceiling. */}
+              {draftBody.length > MAX_CELL_CHARS - 5_000 ? (
+                <span className="note-length-hint" role="status">
+                  {draftBody.length.toLocaleString("en-US")} / {MAX_CELL_CHARS.toLocaleString("en-US")}{" "}
+                  characters — a sheet cell caps at {MAX_CELL_CHARS.toLocaleString("en-US")}
+                </span>
+              ) : (
+                <span className="note-md-hint" aria-hidden="true">
+                  **bold** · # heading · - list · ![image]
+                </span>
+              )}
               <div className="flex-spacer" />
               <button
                 type="button"

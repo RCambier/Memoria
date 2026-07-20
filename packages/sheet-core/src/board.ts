@@ -1,4 +1,4 @@
-import { locateRowById, type SheetError } from "./grid.js";
+import { assertCellLimits, locateRowById, type SheetError } from "./grid.js";
 import { generateId } from "./id.js";
 import { boardOrder, topSortOrder } from "./ordering.js";
 import { parseSheet, type ParseResult } from "./parse.js";
@@ -68,6 +68,7 @@ export interface NewTaskInput {
 
 /** Pure: builds the `Task` for a new entry, given the sort orders already in its column. */
 export function buildTask(columnOrders: readonly number[], input: NewTaskInput, source: Source): Task {
+  assertCellLimits({ title: input.title, notes: input.notes });
   const now = new Date().toISOString();
   return {
     id: generateId(),
@@ -114,6 +115,7 @@ export async function updateTask(
   id: string,
   patch: { title?: string; notes?: string; dueDate?: string; blockedUntil?: string; tags?: string[] },
 ): Promise<Task> {
+  assertCellLimits({ title: patch.title, notes: patch.notes });
   const { tasks, rawRows } = await readValidTasks(store);
   const current = tasks.find((t) => t.id === id);
   if (!current) throw new TaskNotFoundError(id);

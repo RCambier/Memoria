@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as board from "@memoria/sheet-core";
-import { STATUSES, type Note, type Task } from "@memoria/sheet-core";
+import { MAX_CELL_CHARS, STATUSES, type Note, type Task } from "@memoria/sheet-core";
 import { z } from "zod";
 import { resolveBoard, resolveNotes, type MemoriaCatalog } from "./catalog.js";
 
@@ -118,8 +118,8 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
       "Tasks created this way are tagged source=agent.",
     {
       board_id: boardIdSchema,
-      title: z.string().min(1, "title is required"),
-      notes: z.string().optional(),
+      title: z.string().min(1, "title is required").max(MAX_CELL_CHARS),
+      notes: z.string().max(MAX_CELL_CHARS).optional(),
       status: statusSchema.optional().describe("Defaults to backlog."),
       due_date: dueDateSchema,
       blocked_until: blockedUntilSchema,
@@ -148,8 +148,8 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
     {
       board_id: boardIdSchema,
       id: z.string().min(1),
-      title: z.string().min(1).optional(),
-      notes: z.string().optional(),
+      title: z.string().min(1).max(MAX_CELL_CHARS).optional(),
+      notes: z.string().max(MAX_CELL_CHARS).optional(),
       due_date: dueDateSchema,
       blocked_until: blockedUntilSchema,
       tags: tagsSchema,
@@ -256,8 +256,8 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
       "bold/italic, code). Notes created this way are tagged source=agent.",
     {
       notes_id: notesIdSchema,
-      title: z.string().min(1, "title is required"),
-      body: z.string().optional().describe("Markdown body of the note."),
+      title: z.string().min(1, "title is required").max(MAX_CELL_CHARS),
+      body: z.string().max(MAX_CELL_CHARS).optional().describe("Markdown body of the note."),
     },
     async ({ notes_id, title, body }) => {
       try {
@@ -277,8 +277,12 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
     {
       notes_id: notesIdSchema,
       id: z.string().min(1),
-      title: z.string().min(1).optional(),
-      body: z.string().optional().describe("New markdown body; replaces the existing one."),
+      title: z.string().min(1).max(MAX_CELL_CHARS).optional(),
+      body: z
+        .string()
+        .max(MAX_CELL_CHARS)
+        .optional()
+        .describe("New markdown body; replaces the existing one."),
     },
     async ({ notes_id, id, title, body }) => {
       try {

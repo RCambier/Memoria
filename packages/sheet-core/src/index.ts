@@ -8,6 +8,7 @@ export {
 export { STATUSES, type Status, type Source, type Task, type SheetRow } from "./types.js";
 export { topSortOrder, betweenSortOrder, boardOrder } from "./ordering.js";
 export { taskToRow, isBlankRow, RowValidationError } from "./serialize.js";
+export { CellLimitError, MAX_CELL_CHARS } from "./grid.js";
 export { parseSheet, type ParseResult, type SheetError } from "./parse.js";
 export type { SheetStore } from "./store.js";
 export { applyPending, enqueueOp, type PendingOp } from "./pending.js";

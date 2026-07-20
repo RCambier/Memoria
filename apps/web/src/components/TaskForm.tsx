@@ -1,3 +1,4 @@
+import { MAX_CELL_CHARS } from "@memoria/sheet-core";
 import { useEffect, useRef, useState } from "react";
 import { isDateOnly } from "../lib/dates.js";
 import { tagColorClass } from "../lib/tagColor.js";
@@ -78,12 +79,14 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
       }}
     >
+      {/* Hard caps: a Google Sheets cell rejects anything over 50k characters. */}
       <input
         ref={titleRef}
         type="text"
         className="composer-title"
         placeholder="Task title…"
         value={title}
+        maxLength={MAX_CELL_CHARS}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") submit();
@@ -94,6 +97,7 @@ export function TaskForm({ initial, submitLabel, onSubmit, onCancel }: TaskFormP
         placeholder="Description…"
         rows={2}
         value={notes}
+        maxLength={MAX_CELL_CHARS}
         onChange={(e) => setNotes(e.target.value)}
       />
 

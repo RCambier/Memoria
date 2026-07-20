@@ -218,3 +218,17 @@ describe("readValidTasks via listTasks — round trip through real serialization
     expect(tasks).toHaveLength(0);
   });
 });
+
+describe("cell limit (Google Sheets caps a cell at 50k characters)", () => {
+  it("buildTask refuses an oversized description with a precise error", () => {
+    expect(() => board.buildTask([], { title: "ok", notes: "x".repeat(50_001) }, "user")).toThrowError(
+      /50,000/,
+    );
+  });
+
+  it("updateTask refuses an oversized patch before any write", async () => {
+    const store = new FakeSheetStore([row("a", "A", "backlog", 1)]);
+    await expect(board.updateTask(store, "a", { notes: "x".repeat(50_001) })).rejects.toThrowError(/50,000/);
+    expect(store.rows).toHaveLength(2); // untouched
+  });
+});

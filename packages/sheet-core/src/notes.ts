@@ -1,5 +1,5 @@
 import { MalformedSheetError } from "./board.js";
-import { locateRowById, parseItemRows, type SheetError } from "./grid.js";
+import { assertCellLimits, locateRowById, parseItemRows, type SheetError } from "./grid.js";
 import { generateId } from "./id.js";
 import { RowValidationError } from "./serialize.js";
 import type { SheetRow, Source } from "./types.js";
@@ -151,6 +151,7 @@ export interface NewNoteInput {
 
 /** Pure: builds the `Note` for a new entry. */
 export function buildNote(input: NewNoteInput, source: Source): Note {
+  assertCellLimits({ title: input.title, body: input.body });
   const now = new Date().toISOString();
   return {
     id: generateId(),
@@ -205,6 +206,7 @@ export async function updateNote(
   id: string,
   patch: { title?: string; body?: string },
 ): Promise<Note> {
+  assertCellLimits({ title: patch.title, body: patch.body });
   const { notes, rawRows } = await readValidNotes(store);
   const current = notes.find((n) => n.id === id);
   if (!current) throw new NoteNotFoundError(id);

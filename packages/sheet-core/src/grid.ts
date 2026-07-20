@@ -10,6 +10,37 @@ import type { SheetRow } from "./types.js";
  */
 
 /**
+ * Google Sheets rejects any write putting more than 50,000 characters in a
+ * single cell — a hard backend limit, checked here before anything is
+ * enqueued or sent so an oversized note or description fails with a precise
+ * error instead of a permanently-failing write.
+ */
+export const MAX_CELL_CHARS = 50_000;
+
+/** A field would exceed the 50,000-character Google Sheets cell limit. */
+export class CellLimitError extends Error {
+  constructor(
+    public readonly field: string,
+    length: number,
+  ) {
+    super(
+      `The ${field} is ${length.toLocaleString("en-US")} characters — Google Sheets caps a cell at ` +
+        `${MAX_CELL_CHARS.toLocaleString("en-US")}. Shorten it (or split it across several items).`,
+    );
+    this.name = "CellLimitError";
+  }
+}
+
+/** Throws `CellLimitError` for any given field whose text exceeds the cell limit. */
+export function assertCellLimits(fields: Record<string, string | undefined>): void {
+  for (const [field, value] of Object.entries(fields)) {
+    if (value !== undefined && value.length > MAX_CELL_CHARS) {
+      throw new CellLimitError(field, value.length);
+    }
+  }
+}
+
+/**
  * A precise, human-readable description of why a sheet failed validation.
  * `row` is the 1-indexed spreadsheet row (row 1 is the header). `column`
  * and `value` are `null` for sheet-level problems (e.g. a missing or wrong

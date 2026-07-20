@@ -352,6 +352,19 @@ renumbering — keeps every reorder a one-row write. (Float exhaustion needs
 ~50 consecutive midpoint inserts in the same gap to matter; accept the
 theoretical limit rather than engineer around it.)
 
+**Sheets limits**: Google caps a cell at 50,000 characters — the practical
+ceiling on a note body or task description. The limit is enforced before
+anything is written or queued (`sheet-core`'s `MAX_CELL_CHARS`, checked in
+the build/update operations and mirrored as zod caps on the MCP tools and
+`maxLength` on the web inputs), so an oversized value fails with a precise
+error instead of a permanently-rejected write. Should a rejected write ever
+end up queued anyway (an older client), the sync banner names Google's
+rejection rather than mislabeling it "offline" — the queue is never
+silently wedged. Every write uses `valueInputOption=RAW`, so cell content
+is always literal text — a title like `=SUM(A:A)` is never interpreted as
+a formula. The 10-million-cell spreadsheet ceiling is orders of magnitude
+beyond any plausible board.
+
 **Conflicts**: single-user tool; last write wins, the sheet wins over any
 client's memory. Because writes re-locate rows by ID and touch one row,
 the realistic worst case for a simultaneous edit is one field reverting —

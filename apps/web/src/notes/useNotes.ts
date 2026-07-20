@@ -9,6 +9,7 @@ import {
   type SheetError,
 } from "@memoria/sheet-core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ApiError } from "../api/http.js";
 import {
   readNotesOutbox,
   readNotesReplica,
@@ -34,6 +35,8 @@ interface UseNotesResult {
   offline: boolean;
   /** Local mutations not yet confirmed against the sheet. */
   pendingCount: number;
+  /** Google rejected the queued write (not a connectivity problem) — shown so a wedged queue is never silent. */
+  writeRejected: string | null;
   /** Creates a note locally and returns it immediately (the editor opens on it). */
   addNote: (input: { title?: string; body?: string }) => Note | null;
   updateNote: (id: string, patch: { title?: string; body?: string }) => void;
@@ -63,6 +66,7 @@ export function useNotes(token: string | null, spreadsheetId: string | null): Us
   const [local, setLocal] = useState<LocalNotes>(() => loadLocal(spreadsheetId));
   const [malformed, setMalformed] = useState<SheetError | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [writeRejected, setWriteRejected] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Reset local state when the sheet changes — render-time-with-guard, so no
@@ -71,6 +75,7 @@ export function useNotes(token: string | null, spreadsheetId: string | null): Us
     setLocal(loadLocal(spreadsheetId));
     setMalformed(null);
     setFetchError(null);
+    setWriteRejected(null);
     setLastSyncedAt(null);
   }
 
@@ -132,6 +137,7 @@ export function useNotes(token: string | null, spreadsheetId: string | null): Us
           syncEpoch.current++;
           confirmedWrites++;
           setFetchError(null);
+          setWriteRejected(null);
         } catch (err) {
           if (err instanceof NoteNotFoundError) {
             // The target vanished remotely — drop the op; the sheet wins.
@@ -139,8 +145,12 @@ export function useNotes(token: string | null, spreadsheetId: string | null): Us
             setMalformed(err.error);
             break;
           } else {
-            // Network or API failure — park the queue; 'online'/next poll retries.
+            // Park the queue; 'online'/next poll retries. A Google rejection
+            // (e.g. a cell over the 50k limit written by an older client) is
+            // surfaced separately — retrying alone will never fix it, and the
+            // "Offline" label would be a lie.
             setFetchError(err instanceof Error ? err.message : String(err));
+            if (err instanceof ApiError) setWriteRejected(err.message);
             break;
           }
         }
@@ -298,6 +308,7 @@ export function useNotes(token: string | null, spreadsheetId: string | null): Us
     lastSyncedAt,
     offline: fetchError !== null,
     pendingCount: local.outbox.length,
+    writeRejected: local.outbox.length > 0 ? writeRejected : null,
     addNote,
     updateNote,
     deleteNote,

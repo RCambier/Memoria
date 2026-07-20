@@ -279,3 +279,22 @@ describe("enqueueNoteOp", () => {
     expect(ops).toEqual([{ kind: "delete", id: "a" }]);
   });
 });
+
+describe("cell limit (Google Sheets caps a cell at 50k characters)", () => {
+  const tooLong = "x".repeat(50_001);
+
+  it("buildNote refuses an oversized body with a precise error", () => {
+    expect(() => buildNote({ title: "ok", body: tooLong }, "user")).toThrowError(/50,000/);
+  });
+
+  it("updateNote refuses an oversized patch before any write", async () => {
+    const store = new FakeSheetStore([row("n1", "A", "body")]);
+    await expect(updateNote(store, "n1", { body: tooLong })).rejects.toThrowError(/50,000/);
+    expect(store.rows).toHaveLength(2); // untouched
+  });
+
+  it("accepts a body exactly at the limit", () => {
+    const note = buildNote({ body: "x".repeat(50_000) }, "user");
+    expect(note.body).toHaveLength(50_000);
+  });
+});

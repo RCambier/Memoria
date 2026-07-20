@@ -107,10 +107,17 @@ function BoardShell({
   onSelectKind,
   onSignOut,
 }: ShellProps) {
-  const { state, lastSyncedAt, offline, pendingCount, addTask, updateTask, moveTask, deleteTask } = useBoard(
-    token,
-    spreadsheetId,
-  );
+  const {
+    state,
+    lastSyncedAt,
+    offline,
+    pendingCount,
+    writeRejected,
+    addTask,
+    updateTask,
+    moveTask,
+    deleteTask,
+  } = useBoard(token, spreadsheetId);
   const [settingsOpen, setSettingsOpen] = useState<false | "agents" | "calendar">(false);
   useBackClose(settingsOpen !== false, () => setSettingsOpen(false));
   const [mirrorEnabled, setMirrorEnabled] = useState(getCalendarMirrorEnabled);
@@ -159,6 +166,15 @@ function BoardShell({
           </div>
         </div>
       )}
+      {writeRejected && (
+        <div className="banner">
+          <span className="icon">⚠</span>
+          <div>
+            <strong>Google rejected a queued change</strong>
+            <span>{writeRejected} Edit or delete that item to unblock syncing.</span>
+          </div>
+        </div>
+      )}
 
       <Board
         tasks={tasks}
@@ -193,10 +209,8 @@ function NotesShell({
   onSelectKind,
   onSignOut,
 }: ShellProps) {
-  const { state, lastSyncedAt, offline, pendingCount, addNote, updateNote, deleteNote } = useNotes(
-    token,
-    spreadsheetId,
-  );
+  const { state, lastSyncedAt, offline, pendingCount, writeRejected, addNote, updateNote, deleteNote } =
+    useNotes(token, spreadsheetId);
   const [settingsOpen, setSettingsOpen] = useState<false | "agents" | "calendar">(false);
   // The open note, if any — looked up live so a sync refreshes the dialog.
   const [open, setOpen] = useState<{ id: string; isNew: boolean } | null>(null);
@@ -235,6 +249,15 @@ function NotesShell({
           <div>
             <strong>Can&rsquo;t reach the sheet right now</strong>
             <span>{state.message} Notes keep trying every few seconds.</span>
+          </div>
+        </div>
+      )}
+      {writeRejected && (
+        <div className="banner">
+          <span className="icon">⚠</span>
+          <div>
+            <strong>Google rejected a queued change</strong>
+            <span>{writeRejected} Edit or delete that note to unblock syncing.</span>
           </div>
         </div>
       )}
