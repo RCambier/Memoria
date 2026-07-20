@@ -1937,8 +1937,7 @@ kbd {
 }
 .note-card {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   break-inside: avoid;
   margin: 0 0 16px;
@@ -1960,20 +1959,47 @@ kbd {
   background: var(--note-agent-bg);
   border-color: var(--note-agent-line);
 }
-.note-card.new {
+/* Text column — the hero (design 10b). Fills the card when there's no thumb. */
+.note-card-text {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 96px;
-  background: transparent;
-  border: 1.5px dashed var(--line-strong);
-  box-shadow: none;
-  color: var(--ink-faint);
-  font-size: 13px;
+  flex-direction: column;
+  gap: 8px;
 }
-.note-card.new:hover {
-  color: var(--ink-mid);
-  border-color: var(--ink-faint);
+/* 56px side thumbnail: first image, +N badge for the rest. */
+.note-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 9px;
+  background: var(--bg-subtle);
+}
+.note-thumb-img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 9px;
+  display: block;
+}
+.note-thumb .md-img-loading {
+  display: block;
+  width: 56px;
+  height: 56px;
+  font-size: 0;
+}
+.note-thumb-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: 8px;
+  padding: 1px 6px;
 }
 .note-card-title {
   font-size: 14.5px;

@@ -1,7 +1,8 @@
 import type { Note } from "@memoria/sheet-core";
 import { useState } from "react";
 import { formatShortDate } from "../lib/dates.js";
-import { Markdown } from "./Markdown.js";
+import { noteImages, type NoteImage } from "../lib/noteImages.js";
+import { DriveImage, Markdown } from "./Markdown.js";
 
 /** The grid's provenance filter — design 5a's chip row. */
 type NotesFilter = "all" | "user" | "agent";
@@ -74,14 +75,7 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
       {visible.length === 0 ? (
         <div className="notes-empty">
           {notes.length === 0 ? (
-            <>
-              <p>No notes yet.</p>
-              {!readOnly && (
-                <button type="button" className="btn-primary btn-sm" onClick={onCreate}>
-                  + New note
-                </button>
-              )}
-            </>
+            <p>No notes yet. Use the bar above to take one.</p>
           ) : (
             <p>No {filter === "agent" ? "agent" : "your"} notes here.</p>
           )}
@@ -89,7 +83,8 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
       ) : (
         <div className="notes-grid">
           {visible.map((note) => {
-            const hasBody = note.body.trim() !== "";
+            const { images, text } = noteImages(note.body);
+            const hasText = text.trim() !== "";
             return (
               // A div, not a button: the body renders real markdown (block
               // elements, links, checkboxes), which can't nest in a button.
@@ -97,7 +92,7 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
                 role="button"
                 tabIndex={0}
                 key={note.id}
-                className={`note-card${note.source === "agent" ? " agent" : ""}`}
+                className={`note-card${note.source === "agent" ? " agent" : ""}${images.length > 0 ? " has-thumb" : ""}`}
                 onClick={() => onOpen(note.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -106,27 +101,50 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
                   }
                 }}
               >
-                {note.title && <span className="note-card-title">{note.title}</span>}
-                {hasBody && (
-                  <div className="note-card-md">
-                    <Markdown text={note.body} token={token} />
-                  </div>
+                {/* Design 10b: text is the hero on the left; images collapse
+                    into one 56px thumbnail on the right with a +N badge. */}
+                <div className="note-card-text">
+                  {note.title && <span className="note-card-title">{note.title}</span>}
+                  {hasText && (
+                    <div className="note-card-md">
+                      <Markdown text={text} token={token} />
+                    </div>
+                  )}
+                  {!note.title && !hasText && images.length === 0 && (
+                    <span className="note-card-body empty">Empty note</span>
+                  )}
+                  <span className="note-card-meta">
+                    {note.source === "agent" && <span className="chip">✳ agent</span>}
+                    <span className="note-card-date">Edited {editedLabel(note)}</span>
+                  </span>
+                </div>
+                {images.length > 0 && (
+                  <NoteThumb image={images[0]!} extra={images.length - 1} token={token} />
                 )}
-                {!note.title && !hasBody && <span className="note-card-body empty">Empty note</span>}
-                <span className="note-card-meta">
-                  {note.source === "agent" && <span className="chip">✳ agent</span>}
-                  <span className="note-card-date">Edited {editedLabel(note)}</span>
-                </span>
               </div>
             );
           })}
-          {!readOnly && (
-            <button type="button" className="note-card new" onClick={onCreate}>
-              + New note
-            </button>
-          )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** The 56px side thumbnail (design 10b): first image, with a +N badge for the rest. */
+function NoteThumb({ image, extra, token }: { image: NoteImage; extra: number; token: string | null }) {
+  return (
+    <div className="note-thumb" aria-hidden="true">
+      {image.src.startsWith("drive:") ? (
+        <DriveImage
+          fileId={image.src.slice("drive:".length)}
+          alt={image.alt}
+          token={token}
+          className="note-thumb-img"
+        />
+      ) : (
+        <img className="note-thumb-img" src={image.src} alt={image.alt} referrerPolicy="no-referrer" />
+      )}
+      {extra > 0 && <span className="note-thumb-badge">+{extra}</span>}
     </div>
   );
 }

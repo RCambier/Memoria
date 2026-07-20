@@ -22,7 +22,17 @@ function driveImageUrl(token: string, fileId: string): Promise<string> {
   return cached;
 }
 
-function DriveImage({ fileId, alt, token }: { fileId: string; alt: string; token: string | null }) {
+export function DriveImage({
+  fileId,
+  alt,
+  token,
+  className = "md-img",
+}: {
+  fileId: string;
+  alt: string;
+  token: string | null;
+  className?: string;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -42,7 +52,7 @@ function DriveImage({ fileId, alt, token }: { fileId: string; alt: string; token
     };
   }, [token, fileId]);
 
-  if (url) return <img className="md-img" src={url} alt={alt} />;
+  if (url) return <img className={className} src={url} alt={alt} />;
   return (
     <span className={`md-img-loading${failed ? " failed" : ""}`} role="img" aria-label={alt || "image"}>
       {failed ? "⚠ image unavailable" : alt || "Loading image…"}
