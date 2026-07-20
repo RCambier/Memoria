@@ -284,9 +284,16 @@ and the app connects exactly one of each (see *First run* above).
   agent-written notes have nothing to inject and there is no sanitizer.
 - **Image attachments**: pasting or dropping an image into the note editor
   uploads it to `Memoria/notes/attachments/` in the user's Drive
-  (multipart, `drive.file` scope) and embeds `![name](drive:<fileId>)`;
-  render resolves `drive:` sources by downloading with the user's own token
-  into an object URL. Attachments are ordinary Drive files the user owns.
+  (multipart, `drive.file` scope) and embeds `![name](drive:<fileId>)`.
+  Large pastes (>1.5 MB) are downscaled in the browser first (WebP,
+  ≤2048px) — faster uploads and far under the 5 MB multipart ceiling;
+  smaller images upload untouched. Render resolves `drive:` sources through
+  **Drive's own CDN thumbnails** (`files.get?fields=thumbnailLink`, size
+  rewritten to the display size — 112px card tiles, 1600px in the open
+  note), so a card never downloads a multi-megabyte original; the ladder
+  falls back to a fresh link (they expire after hours) and finally to a
+  full authed download into an object URL. Attachments are ordinary Drive
+  files the user owns.
 - **Provenance**: `source` is `user` or `agent`, informational only.
   Agent-written notes render with a warm paper tint and an ✳ chip; the
   toolbar chips filter all / by you / by agents.

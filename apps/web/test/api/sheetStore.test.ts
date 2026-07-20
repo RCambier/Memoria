@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RemoteCatalog } from "../../api/_lib/sheetStore.js";
-import { findCollections } from "../../src/api/drive.js";
+import { findCollections, thumbnailUrlAt } from "../../src/api/drive.js";
 import { HttpSheetStore } from "../../src/api/sheetStore.js";
 
 function jsonResponse(body: unknown, ok = true): Response {
@@ -124,5 +124,23 @@ describe("RemoteCatalog", () => {
     const url = fetchMock.mock.calls[0]?.[0] as string;
     expect(url).toContain("sheet-notes");
     expect(decodeURIComponent(url)).toContain("Notes!");
+  });
+});
+
+describe("thumbnailUrlAt", () => {
+  it("rewrites the trailing size directive to the requested pixels", () => {
+    expect(thumbnailUrlAt("https://lh3.googleusercontent.com/abc=s220", 480)).toBe(
+      "https://lh3.googleusercontent.com/abc=s480",
+    );
+  });
+
+  it("appends a size when the link has none", () => {
+    expect(thumbnailUrlAt("https://lh3.googleusercontent.com/abc", 112)).toBe(
+      "https://lh3.googleusercontent.com/abc=s112",
+    );
+  });
+
+  it("leaves non-http links untouched (harness data: URLs)", () => {
+    expect(thumbnailUrlAt("data:image/png;base64,AAAA", 480)).toBe("data:image/png;base64,AAAA");
   });
 });

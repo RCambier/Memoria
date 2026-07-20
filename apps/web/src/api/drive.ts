@@ -170,3 +170,28 @@ export async function downloadFile(token: string, fileId: string): Promise<Blob>
   const res = await authedFetch(token, `${BASE}/${fileId}?alt=media`);
   return res.blob();
 }
+
+/**
+ * Fetches the short-lived signed URL of Drive's own thumbnail for a file —
+ * Google generates and CDN-serves resized versions of every image, so
+ * attachments can render at tens of KB instead of the full original. Null
+ * when Drive has no thumbnail (yet); the link itself expires after a few
+ * hours, so callers cache per session and fall back on error.
+ */
+export async function fetchThumbnailLink(token: string, fileId: string): Promise<string | null> {
+  const data = await authedJson<{ thumbnailLink?: string }>(token, `${BASE}/${fileId}?fields=thumbnailLink`);
+  return data.thumbnailLink ?? null;
+}
+
+/**
+ * Rewrites a `thumbnailLink`'s trailing size directive (`=s220`) to the
+ * requested pixel size (longest edge). Only real http(s) CDN links are
+ * rewritten — anything else (test fixtures, data: URLs) passes through.
+ * Pure; exported for tests.
+ */
+export function thumbnailUrlAt(link: string, px: number): string {
+  if (!/^https?:/.test(link)) return link;
+  const size = Math.max(1, Math.round(px));
+  const rewritten = link.replace(/=s\d+(-[a-z]+)*$/, `=s${size}`);
+  return rewritten === link && !/=s\d+/.test(link) ? `${link}=s${size}` : rewritten;
+}

@@ -117,10 +117,11 @@ const notesGrid: string[][] = [
 ];
 
 // A 1×1 red PNG — what attachment downloads return.
-const TINY_PNG = Uint8Array.from(
-  atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="),
-  (c) => c.charCodeAt(0),
-);
+const TINY_PNG_B64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+const TINY_PNG = Uint8Array.from(atob(TINY_PNG_B64), (c) => c.charCodeAt(0));
+/** What the thumbnailLink stub serves — a data URL, so <img> loads need no interception. */
+const TINY_PNG_DATA_URL = `data:image/png;base64,${TINY_PNG_B64}`;
 
 let offline = new URLSearchParams(window.location.search).get("offline") === "1";
 window.__setOffline = (v: boolean) => {
@@ -193,6 +194,9 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (url.includes("googleapis.com/drive")) {
     const method = init?.method ?? "GET";
+    if (method === "GET" && url.includes("fields=thumbnailLink")) {
+      return json({ thumbnailLink: TINY_PNG_DATA_URL });
+    }
     if (method === "GET" && url.includes("alt=media")) {
       return new Response(TINY_PNG, { status: 200, headers: { "Content-Type": "image/png" } });
     }

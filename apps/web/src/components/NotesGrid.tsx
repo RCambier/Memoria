@@ -144,6 +144,7 @@ function NoteThumb({ image, extra, token }: { image: NoteImage; extra: number; t
           alt={image.alt}
           token={token}
           className="note-thumb-img"
+          displayPx={112}
         />
       ) : (
         <img className="note-thumb-img" src={image.src} alt={image.alt} referrerPolicy="no-referrer" />
