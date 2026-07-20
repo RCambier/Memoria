@@ -730,8 +730,8 @@ button:focus-visible {
 .flex-spacer {
   flex: 1;
 }
-/* Mobile-only floating add button; the mobile media block makes it visible. */
-.fab-add {
+/* Mobile-only pinned quick-add (design 8d); the mobile media block reveals it. */
+.quick-add {
   display: none;
 }
 kbd {
@@ -1598,24 +1598,27 @@ kbd {
   .col-head {
     display: none;
   }
-  .fab-add {
-    display: grid;
-    place-items: center;
-    position: fixed;
-    right: 20px;
-    bottom: calc(24px + env(safe-area-inset-bottom));
-    width: 56px;
-    height: 56px;
-    border: none;
-    border-radius: 50%;
-    background: var(--accent);
-    color: var(--accent-contrast);
-    font-size: 28px;
-    line-height: 1;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  /* Quick-add: a slim input-looking button pinned under the pills (8d). */
+  .quick-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    margin: 10px 16px 0;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ink-faint);
+    text-align: left;
     cursor: pointer;
-    z-index: 15;
     -webkit-tap-highlight-color: transparent;
+  }
+  .quick-add-plus {
+    font-size: 15px;
+    line-height: 1;
   }
   /* 2a chip pills: bordered, active = filled accent, counts inline */
   .seg-switcher {

@@ -137,6 +137,16 @@ export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: Boar
           </button>
         ))}
       </div>
+      {/* Mobile-only quick-add pinned under the pills (design 8d) — always
+          visible, targets the column currently on screen. */}
+      {!readOnly && (
+        <button type="button" className="quick-add" onClick={() => setComposerStatus(activeMobileStatus)}>
+          <span className="quick-add-plus" aria-hidden="true">
+            +
+          </span>
+          Add a todo to {STATUS_LABEL[activeMobileStatus]}…
+        </button>
+      )}
       <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className={`board${cardDragging ? " snap-off" : ""}`} ref={boardRef}>
           {STATUSES.map((status) => (
@@ -163,17 +173,6 @@ export function Board({ tasks, readOnly, onAdd, onMove, onEdit, onDelete }: Boar
           <span key={status} className={status === activeMobileStatus ? "dot active" : "dot"} />
         ))}
       </div>
-      {/* Mobile-only floating add — targets the column currently on screen. */}
-      {!readOnly && (
-        <button
-          type="button"
-          className="fab-add"
-          aria-label={`Add task to ${STATUS_LABEL[activeMobileStatus]}`}
-          onClick={() => setComposerStatus(activeMobileStatus)}
-        >
-          +
-        </button>
-      )}
       {composerStatus !== null &&
         isMobile &&
         createPortal(
