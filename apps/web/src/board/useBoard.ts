@@ -150,10 +150,11 @@ export function useBoard(token: string | null, spreadsheetId: string | null): Us
 
         try {
           if (op.kind === "add") {
-            // Replay guard: if a previous attempt landed (response lost, page
-            // reloaded), the id is already in the replica — don't append twice.
-            const landed = localRef.current.replica?.tasks.some((x) => x.id === op.task.id);
-            if (!landed) await boardApi.appendTask(t, boardId, op.task);
+            // Replay-safe at the source of truth: appendTask re-reads the sheet
+            // and skips if this id already landed (response lost, page reloaded),
+            // so a retry can never write the row twice. See sheet-core
+            // appendTaskIfAbsent — the local replica is not consulted here.
+            await boardApi.appendTask(t, boardId, op.task);
           } else if (op.kind === "edit") {
             await boardApi.editTask(t, boardId, op.id, op.patch);
           } else if (op.kind === "move") {

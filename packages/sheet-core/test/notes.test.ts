@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addNote,
+  appendNoteIfAbsent,
   applyNotesPending,
   buildNote,
   deleteNote,
@@ -65,6 +66,30 @@ function note(id: string, overrides: Partial<Note> = {}): Note {
     ...overrides,
   };
 }
+
+describe("appendNoteIfAbsent (replay safety)", () => {
+  it("appends a note that isn't on the sheet yet", async () => {
+    const store = new FakeSheetStore();
+    const n = buildNote({ title: "Fresh" }, "user");
+    await appendNoteIfAbsent(store, n);
+    expect(store.rows).toHaveLength(2); // header + the one row
+    expect(store.rows[1]![0]).toBe(n.id);
+  });
+
+  it("is a no-op when the id already landed (retry after a lost response)", async () => {
+    const store = new FakeSheetStore();
+    const n = buildNote({ title: "Once" }, "user");
+    await appendNoteIfAbsent(store, n); // first attempt lands
+    await appendNoteIfAbsent(store, n); // retry after a lost response
+    expect(store.rows).toHaveLength(2); // still one row — never duplicated
+  });
+
+  it("refuses to append onto a malformed sheet", async () => {
+    const store = new FakeSheetStore([["", "no id", "body", "user", "x", "y"]]);
+    const n = buildNote({ title: "New" }, "user");
+    await expect(appendNoteIfAbsent(store, n)).rejects.toThrow(MalformedSheetError);
+  });
+});
 
 describe("parseNotesSheet", () => {
   it("parses a header-only sheet to zero notes", () => {

@@ -1,5 +1,5 @@
 import {
-  appendTask as appendTaskOp,
+  appendTaskIfAbsent as appendTaskOp,
   buildTask,
   deleteTask,
   fetchBoard as fetchBoardOp,
@@ -42,7 +42,11 @@ export function buildNewTask(
   return buildTask(columnOrders, input, "user");
 }
 
-/** Appends a newly built task as a new row. */
+/**
+ * Appends a newly built task, replay-safely: the flusher may retry an append
+ * whose response was lost, so the shared op re-reads and skips if the id is
+ * already on the sheet (never a duplicate row).
+ */
 export function appendTask(token: string, spreadsheetId: string, task: Task): Promise<void> {
   return appendTaskOp(store(token, spreadsheetId), task);
 }

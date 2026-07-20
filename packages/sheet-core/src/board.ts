@@ -89,6 +89,21 @@ export async function appendTask(store: SheetStore, task: Task): Promise<void> {
   await store.appendRow(taskToRow(task));
 }
 
+/**
+ * Replay-safe append: re-reads the sheet and writes the row only if no row
+ * already carries this task's id. The optimistic-sync flusher retries an
+ * append whose write may have landed but whose response was lost; without
+ * this, the ambiguous retry would append the same id twice and make the
+ * sheet malformed (duplicate-id parse error). Confirmation comes from the
+ * source of truth, not a local replica — so a lost response can never
+ * duplicate a row.
+ */
+export async function appendTaskIfAbsent(store: SheetStore, task: Task): Promise<void> {
+  const { rawRows } = await readValidTasks(store);
+  if (locateRowById(rawRows, task.id) !== null) return; // already landed
+  await store.appendRow(taskToRow(task));
+}
+
 export async function listTasks(store: SheetStore, status?: Status): Promise<Task[]> {
   const { tasks } = await readValidTasks(store);
   const filtered = status ? tasks.filter((t) => t.status === status) : tasks;

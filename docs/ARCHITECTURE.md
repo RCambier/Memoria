@@ -100,9 +100,12 @@ React + TypeScript + Vite static SPA. No backend of any kind.
   instant and never await the network; a reload paints the board from the
   replica before any request; offline just means the outbox grows. A
   single-flight flusher drains ops in order through the sheet-core board
-  operations, dropping ops whose target vanished remotely (the sheet wins)
-  and skipping an `add` whose client-generated id already landed (replay
-  safety). Polls (every 5 s while visible, plus focus/online) update only
+  operations, dropping ops whose target vanished remotely (the sheet wins).
+  An `add` is replay-safe against the *source of truth*, not the local
+  replica: `appendTaskIfAbsent`/`appendNoteIfAbsent` re-read the sheet and
+  skip the write if the client-generated id already landed — so an append
+  whose response was lost cannot be written twice (no duplicate-id malformed
+  sheet). Polls (every 5 s while visible, plus focus/online) update only
   the replica; a poll that raced a confirmed write is discarded and
   re-fetched, so the projection never regresses. Last write wins.
 - **Writes are row-targeted**: to mutate a task, re-locate its row by task

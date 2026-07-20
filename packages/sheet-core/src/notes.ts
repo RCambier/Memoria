@@ -192,6 +192,19 @@ export async function appendNote(store: SheetStore, note: Note): Promise<void> {
   await store.appendRow(noteToRow(note));
 }
 
+/**
+ * Replay-safe append: re-reads the sheet and writes the row only if no row
+ * already carries this note's id. The optimistic-sync flusher retries an
+ * append whose write may have landed but whose response was lost; confirming
+ * absence against the source of truth (not a local replica) means a lost
+ * response can never duplicate a row and leave the sheet malformed.
+ */
+export async function appendNoteIfAbsent(store: SheetStore, note: Note): Promise<void> {
+  const { rawRows } = await readValidNotes(store);
+  if (locateRowById(rawRows, note.id) !== null) return; // already landed
+  await store.appendRow(noteToRow(note));
+}
+
 /** Reads the sheet, builds the note, and appends it. */
 export async function addNote(store: SheetStore, input: NewNoteInput, source: Source): Promise<Note> {
   await readValidNotes(store); // validate before writing, like every other mutation

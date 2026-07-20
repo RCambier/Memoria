@@ -26,6 +26,7 @@ export {
   listNotes,
   addNote,
   appendNote,
+  appendNoteIfAbsent,
   updateNote,
   deleteNote,
   applyNotesPending,
@@ -37,6 +38,7 @@ export {
 export {
   addTask,
   appendTask,
+  appendTaskIfAbsent,
   buildTask,
   completeTask,
   deleteTask,

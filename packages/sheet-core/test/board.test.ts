@@ -67,6 +67,30 @@ describe("listTasks", () => {
   });
 });
 
+describe("appendTaskIfAbsent (replay safety)", () => {
+  it("appends a task that isn't on the sheet yet", async () => {
+    const store = new FakeSheetStore();
+    const task = board.buildTask([], { title: "Fresh" }, "user");
+    await board.appendTaskIfAbsent(store, task);
+    expect(store.rows).toHaveLength(2); // header + the one row
+    expect(store.rows[1]![0]).toBe(task.id);
+  });
+
+  it("is a no-op when the id already landed (retry after a lost response)", async () => {
+    const store = new FakeSheetStore();
+    const task = board.buildTask([], { title: "Once" }, "user");
+    await board.appendTaskIfAbsent(store, task); // first attempt lands
+    await board.appendTaskIfAbsent(store, task); // retry after a lost response
+    expect(store.rows).toHaveLength(2); // still one row — never duplicated
+  });
+
+  it("refuses to append onto a malformed sheet (source of truth is unreadable)", async () => {
+    const store = new FakeSheetStore([row("b1", "A", "doing", 1)]);
+    const task = board.buildTask([], { title: "New" }, "user");
+    await expect(board.appendTaskIfAbsent(store, task)).rejects.toThrow(MalformedSheetError);
+  });
+});
+
 describe("addTask", () => {
   it("inserts at the top of the target column, stamping the given source", async () => {
     const store = new FakeSheetStore([row("b1", "Existing", "backlog", 5)]);

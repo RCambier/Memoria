@@ -125,10 +125,11 @@ export function useNotes(token: string | null, spreadsheetId: string | null): Us
 
         try {
           if (op.kind === "add") {
-            // Replay guard: if a previous attempt landed (response lost, page
-            // reloaded), the id is already in the replica — don't append twice.
-            const landed = localRef.current.replica?.notes.some((x) => x.id === op.note.id);
-            if (!landed) await notesApi.appendNote(t, sheetId, op.note);
+            // Replay-safe at the source of truth: appendNote re-reads the sheet
+            // and skips if this id already landed (response lost, page reloaded),
+            // so a retry can never write the row twice. See sheet-core
+            // appendNoteIfAbsent — the local replica is not consulted here.
+            await notesApi.appendNote(t, sheetId, op.note);
           } else if (op.kind === "edit") {
             await notesApi.editNote(t, sheetId, op.id, op.patch);
           } else {

@@ -1,5 +1,5 @@
 import {
-  appendNote as appendNoteOp,
+  appendNoteIfAbsent as appendNoteOp,
   buildNote,
   deleteNote,
   fetchNotes as fetchNotesOp,
@@ -29,7 +29,11 @@ export function buildNewNote(input: { title?: string; body?: string }): Note {
   return buildNote(input, "user");
 }
 
-/** Appends a newly built note as a new row. */
+/**
+ * Appends a newly built note, replay-safely: the flusher may retry an append
+ * whose response was lost, so the shared op re-reads and skips if the id is
+ * already on the sheet (never a duplicate row).
+ */
 export function appendNote(token: string, spreadsheetId: string, note: Note): Promise<void> {
   return appendNoteOp(store(token, spreadsheetId), note);
 }
