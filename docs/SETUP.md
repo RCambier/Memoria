@@ -18,7 +18,6 @@ In **APIs & Services → Library**, enable each of these for your project:
 
 - **Google Sheets API**
 - **Google Drive API**
-- **Google Picker API**
 - **Google Tasks API** — only if you want the optional Google Calendar
   mirror. Enabling it here is separate from granting the `auth/tasks` OAuth
   scope: with the scope granted but the API disabled, Google rejects every
@@ -44,19 +43,10 @@ In **APIs & Services → Credentials → Create Credentials → OAuth client ID*
 
 1. Application type: **Web application**.
 2. **Authorized JavaScript origins**: add `http://localhost:5173` (the Vite
-   dev server) now. You'll come back and add your Vercel URL after step 7.
+   dev server) now. You'll come back and add your Vercel URL after step 6.
 3. Save, then copy the **Client ID** — this is your `VITE_GOOGLE_CLIENT_ID`.
 
-## 5. Create an API key (1 min)
-
-In the same **Credentials** page → **Create Credentials → API key**.
-
-1. Copy the key — this is your `VITE_GOOGLE_API_KEY`.
-2. Click **Restrict key** and limit it to the **Google Picker API**, so it's
-   useless for anything else if it ever leaks (it's shipped in the public
-   bundle by design — see `docs/ARCHITECTURE.md`).
-
-## 6. Run it locally (2 min)
+## 5. Run it locally (2 min)
 
 ```bash
 git clone <your fork>
@@ -69,7 +59,6 @@ Fill in `apps/web/.env`:
 
 ```
 VITE_GOOGLE_CLIENT_ID=<from step 4>
-VITE_GOOGLE_API_KEY=<from step 5>
 ```
 
 ```bash
@@ -79,14 +68,13 @@ npm run dev --workspace=@memoria/web
 Open `http://localhost:5173`, connect your Google account, and create a
 board. It's just a spreadsheet — open it from the topbar link to see it.
 
-## 7. Deploy to Vercel (3 min)
+## 6. Deploy to Vercel (3 min)
 
 1. [Import the repo](https://vercel.com/new) into Vercel.
 2. Set **Root Directory** to `apps/web` (Vercel auto-detects the Vite
    framework preset and runs the monorepo's `npm install` first).
-3. Add the same two environment variables from step 6
-   (`VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY`) in the Vercel project
-   settings.
+3. Add the `VITE_GOOGLE_CLIENT_ID` environment variable from step 5 in the
+   Vercel project settings.
 4. Deploy. Copy the resulting URL (e.g. `https://your-app.vercel.app`).
 5. Back in **Google Cloud → Credentials → your OAuth client**, add that URL
    to **Authorized JavaScript origins** and save.
@@ -95,7 +83,7 @@ board. It's just a spreadsheet — open it from the topbar link to see it.
 `index.html`), so client-side routing (if any is added later) won't 404 on
 refresh.
 
-## 8. Enable the MCP connector and persistent sign-in (5 min)
+## 7. Enable the MCP connector and persistent sign-in (5 min)
 
 This one section powers two things:
 
@@ -194,9 +182,7 @@ place — delete the "Memoria" list in Google Tasks if you want it gone.
 - **"redirect_uri_mismatch" or sign-in fails** — double check the exact
   origin (scheme + host + port, no trailing slash) is listed under
   Authorized JavaScript origins for your OAuth client.
-- **Picker doesn't open** — confirm the API key is unrestricted-enough to
-  call the Picker API (step 5), and that you're signed in.
-- **Connector answers 503** — one of the three env vars from step 8 is
+- **Connector answers 503** — one of the three env vars from step 7 is
   missing or malformed on the deployment; the response body says which
   setup step to revisit. A 401 with `WWW-Authenticate` is healthy — it
   means the connector is up and asking the client to authenticate.

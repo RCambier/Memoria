@@ -85,8 +85,8 @@ export async function tagAsMemories(token: string, fileId: string): Promise<void
 
 /**
  * Unlinks a sheet from the app by removing its kind tag. The file itself is
- * untouched — it stays in the user's Drive and can be re-linked any time via
- * the Picker (which re-tags it).
+ * untouched — it stays in the user's Drive (with all its data), it just no
+ * longer appears in the app's listing.
  */
 export async function untagCollection(token: string, fileId: string, kind: CollectionKind): Promise<void> {
   const key =
