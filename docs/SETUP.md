@@ -19,6 +19,10 @@ In **APIs & Services → Library**, enable each of these for your project:
 - **Google Sheets API**
 - **Google Drive API**
 - **Google Picker API**
+- **Google Tasks API** — only if you want the optional Google Calendar
+  mirror. Enabling it here is separate from granting the `auth/tasks` OAuth
+  scope: with the scope granted but the API disabled, Google rejects every
+  call and the mirror silently does nothing.
 
 ## 3. Configure the OAuth consent screen (2 min)
 
@@ -166,6 +170,11 @@ deployment itself stores nothing to revoke — it never sees or keeps your
 tokens beyond the request it's serving.
 
 ## Optional: show tasks in Google Calendar
+
+**First enable the Google Tasks API** for your project (step 2) — the OAuth
+scope alone is not enough, and a disabled API is the usual reason mirrored
+tasks never appear. Settings reports Google's error verbatim when this
+happens.
 
 Settings → **Google Calendar** → toggle on. The first enable re-runs the
 Google consent screen asking additionally for Google Tasks access
