@@ -13,6 +13,7 @@ import { STATUS_LABEL, STATUS_PILL_CLASS } from "../lib/statusMeta.js";
 import { useAutoGrow } from "../lib/useAutoGrow.js";
 import { uploadTaskAttachment } from "../notes/attachments.js";
 import { AgentMark } from "./AgentMark.js";
+import { PaperclipIcon } from "./PaperclipIcon.js";
 import { TagsEditor } from "./TagsEditor.js";
 
 /** What the dialog opens onto. "edit" just focuses the title — every field is
@@ -217,7 +218,8 @@ export function TaskDetail({
             >
               Delete
             </button>
-            <div className="flex-spacer" />
+            {/* The paperclip lives with the quiet secondary actions, away
+                from the primary CTA on the right. */}
             <input
               ref={fileInputRef}
               type="file"
@@ -236,8 +238,14 @@ export function TaskDetail({
               disabled={attaching > 0}
               onClick={() => fileInputRef.current?.click()}
             >
-              {attaching > 0 ? "Attaching…" : "📎"}
+              <PaperclipIcon />
             </button>
+            {attaching > 0 && (
+              <span className="attach-status" role="status">
+                Attaching…
+              </span>
+            )}
+            <div className="flex-spacer" />
             {task.status !== "done" && (
               <button type="button" className="btn-primary btn-sm" onClick={onComplete}>
                 Move to Done

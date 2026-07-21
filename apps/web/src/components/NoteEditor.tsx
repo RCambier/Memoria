@@ -5,6 +5,7 @@ import { MAX_CELL_CHARS } from "@memoria/sheet-core";
 import { isAttachableImage, uploadNoteAttachment } from "../notes/attachments.js";
 import { AgentMark } from "./AgentMark.js";
 import { Markdown } from "./Markdown.js";
+import { PaperclipIcon } from "./PaperclipIcon.js";
 
 type EditorMode = "view" | "edit" | "confirm";
 
@@ -303,7 +304,7 @@ export function NoteEditor({
                 aria-label="Attach a file"
                 onClick={() => fileInputRef.current?.click()}
               >
-                📎
+                <PaperclipIcon />
               </button>
               {/* A Google Sheets cell caps at 50k characters — the input is
                   hard-capped above; the counter appears near the ceiling. */}
