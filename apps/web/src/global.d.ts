@@ -1,6 +1,6 @@
-// Minimal shapes for the Google Identity Services and Picker globals, which
-// load from Google's CDN via <script> tags — there is no npm package for
-// either, so we hand-declare just the surface this app uses.
+// Minimal shapes for the Google Identity Services global, which loads from
+// Google's CDN via a <script> tag — there is no npm package, so we
+// hand-declare just the surface this app uses.
 
 interface GoogleTokenResponse {
   access_token?: string;
@@ -22,37 +22,8 @@ interface GoogleAccountsOAuth2 {
   revoke(token: string, done: () => void): void;
 }
 
-interface GooglePickerDoc {
-  id: string;
-  name: string;
-}
-
-interface GooglePickerResponse {
-  action: string;
-  docs?: GooglePickerDoc[];
-}
-
-interface GooglePickerBuilderInstance {
-  addView(view: unknown): GooglePickerBuilderInstance;
-  setOAuthToken(token: string): GooglePickerBuilderInstance;
-  setDeveloperKey(key: string): GooglePickerBuilderInstance;
-  setCallback(cb: (response: GooglePickerResponse) => void): GooglePickerBuilderInstance;
-  build(): { setVisible(visible: boolean): void };
-}
-
-interface GooglePickerNamespace {
-  Action: { PICKED: string; CANCEL: string };
-  ViewId: { SPREADSHEETS: string };
-  DocsView: new (viewId: string) => unknown;
-  PickerBuilder: new () => GooglePickerBuilderInstance;
-}
-
 interface Window {
   google?: {
     accounts: { oauth2: GoogleAccountsOAuth2 };
-    picker: GooglePickerNamespace;
-  };
-  gapi?: {
-    load(api: string, callback: () => void): void;
   };
 }

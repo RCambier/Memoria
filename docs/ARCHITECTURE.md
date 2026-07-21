@@ -71,7 +71,7 @@ React + TypeScript + Vite static SPA. No backend of any kind.
     (`/api/auth/start?scope=tasks`, `include_granted_scopes`) — only users
     who flip the toggle ever see that consent screen.
   - Base scopes in both modes: `https://www.googleapis.com/auth/drive.file` — the
-    app can only access files it created or files the user explicitly picked
+    app can only access files it created
     — plus basic profile (name, photo, email) for the account menu; all
     non-sensitive. Sheets/Drive calls are plain `fetch` against the REST
     APIs with the browser-held access token.
@@ -83,11 +83,12 @@ React + TypeScript + Vite static SPA. No backend of any kind.
   - A kind **with** a connected sheet shows its board/notes/memories view.
   - A kind **without** one shows its setup inline in the tab's content
     area (`components/KindEmpty.tsx`): _create_ (new spreadsheet, tagged,
-    header row written, filed under `Memoria/…`), _link an existing sheet_
-    (Google Picker: an empty sheet gets the kind's tab + headers
-    bootstrapped; valid rows of that kind attach as-is; anything else is
-    refused with a clear message), or _connect_ one of the extras. Filling
-    it in place makes the tab spring to life.
+    header row written, filed under `Memoria/…`) or _connect_ one of the
+    extras. Filling it in place makes the tab spring to life. There is
+    deliberately no "link an arbitrary existing sheet" path — every
+    collection is app-created, which is what lets the account menu's
+    "Open in Google Drive" guarantee the whole of Memoria lives under one
+    `Memoria/` folder.
   - Drive may still hold several tagged sheets of a kind (older versions
     allowed it) — the newest is connected, the rest are the slot's extras,
     offered by the empty state.
@@ -131,7 +132,7 @@ React + TypeScript + Vite static SPA. No backend of any kind.
   ready-made instructions (claude.ai, Claude Code one-liner) — connecting an
   agent is copy-paste plus a Google consent screen, nothing more.
 - **Build-time config** (public by design, via Vite env vars):
-  `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` (Picker only).
+  `VITE_GOOGLE_CLIENT_ID`.
 
 ### `packages/sheet-core` — schema, validation, and the board operations
 
@@ -380,8 +381,9 @@ New sheets are created there; on boot the web app quietly moves any tagged
 sheet that lives elsewhere into place (`api/folders.ts`, best-effort,
 memoized per browser, file contents never touched). An earlier layout named
 the todos folder `boards/` — when found, it's renamed to `todos/` in place
-(same folder id, contents follow for free). Sheets the user attached via
-the Picker are left where the user keeps them.
+(same folder id, contents follow for free). Sheets attached via the
+now-removed Picker flow (pre-2026-07 deployments) are still honored where
+the user keeps them.
 
 ## The sheet schema
 

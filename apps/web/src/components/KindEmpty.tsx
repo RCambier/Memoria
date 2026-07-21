@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { Collection, CollectionKind } from "../api/drive.js";
-import { pickSpreadsheet } from "../api/picker.js";
-import { attachOrBootstrap, createCollection } from "../board/onboarding.js";
+import { createCollection } from "../board/onboarding.js";
 
 interface KindEmptyProps {
   token: string | null;
@@ -16,41 +15,25 @@ const LABEL: Record<CollectionKind, string> = { board: "Todos", notes: "Notes", 
 /**
  * The empty tab IS the setup (design 9b): no separate screen. When the
  * active kind has no connected sheet, its content area shows this — create a
- * new sheet, link an existing one, or connect a tagged sheet already in
- * Drive. Filling it in place makes the tab spring to life.
+ * new sheet, or connect a tagged sheet already in Drive. Always app-created,
+ * never a linked arbitrary sheet: that's what guarantees every collection
+ * lives under the `Memoria/` folder the account menu opens.
  */
 export function KindEmpty({ token, kind, extras, onSheetReady }: KindEmptyProps) {
-  const [busy, setBusy] = useState<"create" | "attach" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const label = LABEL[kind];
 
   async function handleCreate(): Promise<void> {
     if (!token) return;
-    setBusy("create");
+    setBusy(true);
     setError(null);
     try {
       onSheetReady(kind, await createCollection(token, label, kind));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleAttach(): Promise<void> {
-    if (!token) return;
-    setBusy("attach");
-    setError(null);
-    try {
-      const fileId = await pickSpreadsheet(token);
-      if (!fileId) return;
-      const outcome = await attachOrBootstrap(token, fileId, kind);
-      if (outcome.kind === "refused") setError(`Can't use that sheet: ${outcome.reason}`);
-      else onSheetReady(kind, fileId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -68,11 +51,8 @@ export function KindEmpty({ token, kind, extras, onSheetReady }: KindEmptyProps)
       {error && <div className="first-run-error">{error}</div>}
 
       <div className="kind-empty-actions">
-        <button className="btn-primary" onClick={handleCreate} disabled={busy !== null || !token}>
-          {busy === "create" ? "Creating…" : `Create ${label} sheet`}
-        </button>
-        <button className="btn-link" onClick={handleAttach} disabled={busy !== null || !token}>
-          {busy === "attach" ? "Opening Drive…" : "link an existing sheet"}
+        <button className="btn-primary" onClick={handleCreate} disabled={busy || !token}>
+          {busy ? "Creating…" : `Create ${label} sheet`}
         </button>
       </div>
 
@@ -85,7 +65,7 @@ export function KindEmpty({ token, kind, extras, onSheetReady }: KindEmptyProps)
               type="button"
               className="board-row"
               onClick={() => onSheetReady(kind, c.id)}
-              disabled={busy !== null}
+              disabled={busy}
             >
               <SheetGlyph kind={kind} small />
               <span className="board-name">{c.name}</span>
@@ -95,7 +75,9 @@ export function KindEmpty({ token, kind, extras, onSheetReady }: KindEmptyProps)
         </div>
       )}
 
-      <p className="kind-empty-note">Takes a second. The file is yours, in your Drive.</p>
+      <p className="kind-empty-note">
+        Takes a second. The file is yours, filed under Memoria/ in your Drive.
+      </p>
     </div>
   );
 }

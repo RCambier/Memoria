@@ -24,10 +24,10 @@ See `docs/ARCHITECTURE.md` for the full design.
 **Just want to use it?** Use a hosted instance — for example
 [memoria-board.vercel.app](https://memoria-board.vercel.app). Sign in
 with Google and create your sheets — a **Todos** board, a **Notes** grid,
-and an **AI Memories** grid, each backed by a Google Sheet in your own Drive. The app can only
-touch files it created or that you explicitly picked (`drive.file` scope) —
-never the rest of your Drive — and the deployment stores nothing about you
-anywhere.
+and an **AI Memories** grid, each backed by a Google Sheet in your own
+Drive, filed under one `Memoria/` folder. The app can only touch files it
+created (`drive.file` scope) — never the rest of your Drive — and the
+deployment stores nothing about you anywhere.
 
 **Want your own instance, or agent access?** Fork this repo and follow
 **[docs/SETUP.md](docs/SETUP.md)** (~15 minutes: your own free Google Cloud
@@ -39,7 +39,7 @@ Connectors) or Claude Code (`claude mcp add --transport http …`), sign in
 with Google, and your agent gets the board tools against your own
 boards — nothing to install, and it works in scheduled and cloud routines
 too. The app's **Connect from agents** panel walks you through it; see
-[docs/SETUP.md](docs/SETUP.md#8-enable-the-mcp-connector-5-min) for the
+[docs/SETUP.md](docs/SETUP.md#7-enable-the-mcp-connector-and-persistent-sign-in-5-min) for the
 three env vars that switch it on for a fork.
 
 ## Quickstart (local development)
@@ -50,7 +50,7 @@ Once you have credentials from [docs/SETUP.md](docs/SETUP.md):
 git clone <this repo>
 cd Memoria
 npm install
-cp apps/web/.env.example apps/web/.env   # fill in your client ID / API key
+cp apps/web/.env.example apps/web/.env   # fill in your client ID
 npm run dev --workspace=@memoria/web
 ```
 
@@ -67,8 +67,7 @@ docs/                  Architecture, setup guide, design mockup
   sheet is — both other packages depend on it. It's tested exhaustively
   since it's the thing standing between a typo and your data.
 - **`apps/web`** talks to Google Sheets/Drive directly via `fetch` using an
-  OAuth token scoped to `drive.file` (it can only see files it created or
-  you explicitly picked).
+  OAuth token scoped to `drive.file` (it can only see files it created).
 - **`packages/mcp-server`** defines the tools (`list_boards`, `list_tasks`,
   `add_task`, `update_task`, `move_task`, `complete_task`, `delete_task`,
   plus `list_note_collections`, `list_notes`, `add_note`, `update_note`,
