@@ -378,6 +378,7 @@ function MemoriesShell({
         token={token}
         readOnly={readOnly}
         onOpen={(id) => setOpen(id)}
+        provenance={false}
         copy={{
           emptyAll:
             "No memories yet. Connect an agent (Account menu → Connect from agents) and it will gather facts about you here over time.",
@@ -391,6 +392,7 @@ function MemoriesShell({
           token={token}
           readOnly={readOnly}
           startInEdit={false}
+          provenance={false}
           noun="memory"
           uploadAttachment={uploadMemoryAttachment}
           onClose={() => setOpen(null)}

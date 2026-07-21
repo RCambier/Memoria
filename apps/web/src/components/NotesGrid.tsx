@@ -45,9 +45,15 @@ interface NotesGridProps {
   onOpen: (id: string) => void;
   /**
    * Omitted for collections the user doesn't compose by hand (AI Memories —
-   * agents are the only writers): no capture bar, no mobile "+".
+   * agents are the only writers): no create button, no mobile "+".
    */
   onCreate?: () => void;
+  /**
+   * False hides every provenance marker — the All / By you / By agents
+   * chips, the per-card ✳ agent chip, and the warm agent tint. AI Memories
+   * are agent-written by design, so provenance has nothing to say there.
+   */
+  provenance?: boolean;
   /** Defaults to the Notes wording. */
   copy?: NotesGridCopy;
 }
@@ -67,51 +73,63 @@ function editedLabel(note: NoteLike): string {
  * the ✳ chip; yours stay plain. Also serves the AI Memories grid (same
  * shape plus tag chips), with its own `copy`.
  */
-export function NotesGrid({ notes, token, readOnly, onOpen, onCreate, copy = NOTES_COPY }: NotesGridProps) {
+export function NotesGrid({
+  notes,
+  token,
+  readOnly,
+  onOpen,
+  onCreate,
+  provenance = true,
+  copy = NOTES_COPY,
+}: NotesGridProps) {
   const [filter, setFilter] = useState<NotesFilter>("all");
   const tagClass = useTagColors();
   const today = localToday();
 
-  const visible = filter === "all" ? notes : notes.filter((n) => n.source === filter);
+  const visible = provenance && filter !== "all" ? notes.filter((n) => n.source === filter) : notes;
 
   const showCreateCard = Boolean(onCreate) && !readOnly;
 
   return (
     <div className="notes-view">
-      <div className="notes-toolbar">
-        {/* A real button, visibly a button — where the ill-fated fake text input used to sit. */}
-        {showCreateCard && (
-          <button type="button" className="btn-primary notes-new-btn" onClick={onCreate}>
-            <span className="notes-new-plus" aria-hidden="true">
-              +
-            </span>
-            {copy.create}
-          </button>
-        )}
-        <div className="notes-filters" role="group" aria-label="Filter notes">
-          <button
-            type="button"
-            className={`notes-filter${filter === "all" ? " active" : ""}`}
-            onClick={() => setFilter("all")}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            className={`notes-filter${filter === "user" ? " active" : ""}`}
-            onClick={() => setFilter("user")}
-          >
-            By you
-          </button>
-          <button
-            type="button"
-            className={`notes-filter${filter === "agent" ? " active" : ""}`}
-            onClick={() => setFilter("agent")}
-          >
-            <AgentMark /> By agents
-          </button>
+      {(showCreateCard || provenance) && (
+        <div className="notes-toolbar">
+          {/* A real button, visibly a button — where the ill-fated fake text input used to sit. */}
+          {showCreateCard && (
+            <button type="button" className="btn-primary notes-new-btn" onClick={onCreate}>
+              <span className="notes-new-plus" aria-hidden="true">
+                +
+              </span>
+              {copy.create}
+            </button>
+          )}
+          {provenance && (
+            <div className="notes-filters" role="group" aria-label="Filter notes">
+              <button
+                type="button"
+                className={`notes-filter${filter === "all" ? " active" : ""}`}
+                onClick={() => setFilter("all")}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`notes-filter${filter === "user" ? " active" : ""}`}
+                onClick={() => setFilter("user")}
+              >
+                By you
+              </button>
+              <button
+                type="button"
+                className={`notes-filter${filter === "agent" ? " active" : ""}`}
+                onClick={() => setFilter("agent")}
+              >
+                <AgentMark /> By agents
+              </button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {visible.length > 0 && (
         <div className="notes-grid">
@@ -126,7 +144,7 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate, copy = NOT
                 role="button"
                 tabIndex={0}
                 key={note.id}
-                className={`note-card${note.source === "agent" ? " agent" : ""}${images.length > 0 ? " has-thumb" : ""}${expiry?.expired ? " expired" : ""}`}
+                className={`note-card${provenance && note.source === "agent" ? " agent" : ""}${images.length > 0 ? " has-thumb" : ""}${expiry?.expired ? " expired" : ""}`}
                 onClick={() => onOpen(note.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -155,7 +173,7 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate, copy = NOT
                     </span>
                   )}
                   <span className="note-card-meta">
-                    {note.source === "agent" && (
+                    {provenance && note.source === "agent" && (
                       <span className="chip">
                         <AgentMark /> agent
                       </span>

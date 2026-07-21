@@ -26,6 +26,8 @@ interface NoteEditorProps {
   onTagsChange?: (tags: string[]) => void;
   /** Provided by the memories view: shows the expiry date field ("" clears it), saved immediately. */
   onExpiresChange?: (expiresAt: string) => void;
+  /** False hides the ✳ agent chip and warm tint — meaningless where every item is agent-written. */
+  provenance?: boolean;
   /** What the item is called in the UI ("note" by default; "memory" for AI Memories). */
   noun?: string;
   /** Where a pasted/dropped file uploads to — defaults to the notes attachments folder. */
@@ -54,6 +56,7 @@ export function NoteEditor({
   onDelete,
   onTagsChange,
   onExpiresChange,
+  provenance = true,
   noun = "note",
   uploadAttachment = uploadNoteAttachment,
 }: NoteEditorProps) {
@@ -230,7 +233,7 @@ export function NoteEditor({
   const handleCloseRef = useRef(handleClose);
   handleCloseRef.current = handleClose;
 
-  const agent = note.source === "agent";
+  const agent = provenance && note.source === "agent";
   const capNoun = noun.charAt(0).toUpperCase() + noun.slice(1);
 
   return (
