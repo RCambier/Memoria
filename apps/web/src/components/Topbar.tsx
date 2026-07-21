@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CollectionKind } from "../api/drive.js";
 import type { UserProfile } from "../auth/googleAuth.js";
+import { getCachedMemoriaFolderId, memoriaFolderUrl } from "../api/folders.js";
 import { useIsMobile } from "../lib/useIsMobile.js";
 import { AgentMark } from "./AgentMark.js";
 import { Logo } from "./Logo.js";
@@ -51,7 +52,7 @@ function syncLabel(
   return `Synced · ${minutes}m ago`;
 }
 
-/** Simple spreadsheet-grid glyph — stands in for the "Open in Google Sheets" link on narrow screens. */
+/** Simple spreadsheet-grid glyph for the "Open in Google Drive" menu entry. */
 function SheetIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -83,7 +84,7 @@ function AccountMenu({
   onSignOut,
   onOpenSettings,
 }: Pick<TopbarProps, "profile" | "onSignOut" | "onOpenSettings"> & {
-  /** Null when the active kind has no connected sheet — the Sheets link is hidden. */
+  /** The active sheet — the Drive link's fallback while the folder id is unknown. */
   sheetUrl: string | null;
 }) {
   const [open, setOpen] = useState(false);
@@ -106,6 +107,13 @@ function AccountMenu({
   }, [open]);
 
   const initial = (profile?.name || profile?.email || "?").slice(0, 1).toUpperCase();
+
+  // Opens the whole Memoria folder in Drive — every sheet and attachment in
+  // one place. Read at render time (the menu opening re-renders), so the id
+  // cached by the boot-time ensureMemoriaFolders is picked up; falls back to
+  // the active sheet on a fresh browser that hasn't learned it yet.
+  const memoriaFolderId = getCachedMemoriaFolderId();
+  const driveUrl = memoriaFolderId ? memoriaFolderUrl(memoriaFolderId) : sheetUrl;
 
   return (
     <div className="account" ref={rootRef}>
@@ -130,16 +138,16 @@ function AccountMenu({
               {profile.email && <span className="account-email">{profile.email}</span>}
             </div>
           )}
-          {sheetUrl && (
+          {driveUrl && (
             <>
               <a
                 role="menuitem"
-                href={sheetUrl}
+                href={driveUrl}
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => setOpen(false)}
               >
-                <SheetIcon /> Open in Google Sheets
+                <SheetIcon /> Open in Google Drive
               </a>
               <div className="menu-divider" />
             </>

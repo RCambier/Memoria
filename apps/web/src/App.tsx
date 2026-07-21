@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findCollections, type Collection, type CollectionKind } from "./api/drive.js";
-import { organizeCollections } from "./api/folders.js";
+import { ensureMemoriaFolders, organizeCollections } from "./api/folders.js";
 import { clearToken, fetchUserProfile, requestToken, type UserProfile } from "./auth/googleAuth.js";
 import {
   beginSignIn,
@@ -117,6 +117,10 @@ export function App() {
         // File everything under Memoria/todos | Memoria/notes | Memoria/memories,
         // moving strays in. Fire-and-forget: never load-bearing.
         void organizeCollections(token, found);
+        // Also warms the cached Memoria folder id for the topbar's Drive
+        // link (organizeCollections skips the lookup when nothing is
+        // pending). Memoized per session; fire-and-forget.
+        void ensureMemoriaFolders(token).catch(() => {});
       })
       .catch(() => {
         // Listing failed (offline, hiccup) — keep whatever we had; the tabs and

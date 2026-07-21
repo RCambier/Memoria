@@ -39,6 +39,35 @@ interface MemoriaFolders {
 /** v2: the `boards/` → `todos/` layout change re-checks every file's parents once. */
 const ORGANIZED_KEY = "todos:organizedFiles:v2";
 
+/**
+ * The Memoria root folder's Drive id, remembered across sessions so the
+ * topbar's "Open in Google Drive" link works from the first paint (and
+ * offline) — refreshed every time the folder tree is ensured.
+ */
+const MEMORIA_FOLDER_ID_KEY = "todos:memoriaFolderId";
+
+/** The "open this folder in Drive" URL. Pure. */
+export function memoriaFolderUrl(folderId: string): string {
+  return `https://drive.google.com/drive/folders/${folderId}`;
+}
+
+/** The remembered Memoria root folder id, or null before the first `ensureMemoriaFolders`. */
+export function getCachedMemoriaFolderId(): string | null {
+  try {
+    return localStorage.getItem(MEMORIA_FOLDER_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function cacheMemoriaFolderId(id: string): void {
+  try {
+    localStorage.setItem(MEMORIA_FOLDER_ID_KEY, id);
+  } catch {
+    // Storage unavailable — the Drive link just falls back to the sheet.
+  }
+}
+
 let foldersPromise: Promise<MemoriaFolders> | null = null;
 
 /**
@@ -62,6 +91,7 @@ export function ensureMemoriaFolders(token: string): Promise<MemoriaFolders> {
   if (!foldersPromise) {
     foldersPromise = (async () => {
       const memoriaId = await ensureFolder(token, "Memoria", "root");
+      cacheMemoriaFolderId(memoriaId);
       const [todosId, notesId, memoriesId] = await Promise.all([
         ensureTodosFolder(token, memoriaId),
         ensureFolder(token, "notes", memoriaId),
