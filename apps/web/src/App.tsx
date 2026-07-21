@@ -18,6 +18,7 @@ import {
   clearConnectedSheetId,
   getActiveKind,
   getConnectedSheetId,
+  readMemoriesReplica,
   readNotesReplica,
   readReplica,
   setActiveKind as cacheActiveKind,
@@ -28,7 +29,7 @@ import {
 const TOKEN_REFRESH_MARGIN_MS = 2 * 60 * 1000;
 
 /** One connected sheet id per kind — the whole point of the simplified model. */
-type SheetIds = { board: string | null; notes: string | null };
+type SheetIds = { board: string | null; notes: string | null; memories: string | null };
 
 export function App() {
   const [configError, setConfigError] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export function App() {
   const [sheetIds, setSheetIds] = useState<SheetIds>(() => ({
     board: getConnectedSheetId("board"),
     notes: getConnectedSheetId("notes"),
+    memories: getConnectedSheetId("memories"),
   }));
   const [profile, setProfile] = useState<UserProfile | null>(null);
   /** Null until the first Drive listing lands (the setup screen shows skeletons). */
@@ -111,8 +113,9 @@ export function App() {
         const slots = deriveSlots(found, sheetIdsRef.current);
         applyConnected("board", slots.board.connected?.id ?? null);
         applyConnected("notes", slots.notes.connected?.id ?? null);
-        // File everything under Memoria/todos | Memoria/notes, moving
-        // strays in. Fire-and-forget: never load-bearing.
+        applyConnected("memories", slots.memories.connected?.id ?? null);
+        // File everything under Memoria/todos | Memoria/notes | Memoria/memories,
+        // moving strays in. Fire-and-forget: never load-bearing.
         void organizeCollections(token, found);
       })
       .catch(() => {
@@ -219,12 +222,20 @@ export function App() {
 
   /** True when the active sheet has a local replica to paint from. */
   const hasLocalCache = (id: string): boolean =>
-    activeKind === "notes" ? readNotesReplica(id) !== null : readReplica(id) !== null;
+    activeKind === "memories"
+      ? readMemoriesReplica(id) !== null
+      : activeKind === "notes"
+        ? readNotesReplica(id) !== null
+        : readReplica(id) !== null;
 
   const shellProps = {
     spreadsheetId: activeSheetId ?? "",
     kind: activeKind,
-    connectedKinds: { board: sheetIds.board !== null, notes: sheetIds.notes !== null },
+    connectedKinds: {
+      board: sheetIds.board !== null,
+      notes: sheetIds.notes !== null,
+      memories: sheetIds.memories !== null,
+    },
     extras: slots?.[activeKind].extras ?? [],
     listingLoading: collections === null,
     onSelectKind: handleSelectKind,

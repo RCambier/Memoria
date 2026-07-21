@@ -10,10 +10,13 @@ export { registerTools } from "./tools.js";
 export type { SheetStore } from "@memoria/sheet-core";
 export {
   AmbiguousBoardError,
+  AmbiguousMemoriesCollectionError,
   AmbiguousNotesCollectionError,
   NoBoardError,
+  NoMemoriesCollectionError,
   NoNotesCollectionError,
   resolveBoard,
+  resolveMemories,
   resolveNotes,
 } from "./catalog.js";
-export type { BoardCatalog, BoardInfo, MemoriaCatalog, NotesCatalog } from "./catalog.js";
+export type { BoardCatalog, BoardInfo, MemoriaCatalog, MemoriesCatalog, NotesCatalog } from "./catalog.js";

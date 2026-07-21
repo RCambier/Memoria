@@ -2,23 +2,46 @@ import type { Note } from "@memoria/sheet-core";
 import { useState } from "react";
 import { formatShortDate } from "../lib/dates.js";
 import { noteImages, type NoteImage } from "../lib/noteImages.js";
+import { useTagColors } from "../lib/tagColor.js";
 import { AddFab } from "./AddFab.js";
 import { AgentMark } from "./AgentMark.js";
 import { DriveImage, Markdown } from "./Markdown.js";
+import { TagChip } from "./TagChip.js";
 
 /** The grid's provenance filter — design 5a's chip row. */
 type NotesFilter = "all" | "user" | "agent";
 
+/** What the grid renders: a note, or anything note-shaped with tags (an AI memory). */
+type NoteLike = Note & { tags?: string[] };
+
+/** The grid's user-facing wording — the AI Memories view swaps in its own. */
+export interface NotesGridCopy {
+  /** Capture bar text and the mobile FAB label. */
+  capture: string;
+  /** Empty-state line when the sheet has no items at all. */
+  emptyAll: string;
+  /** Plural noun for the filtered empty state ("notes", "memories"). */
+  noun: string;
+}
+
+const NOTES_COPY: NotesGridCopy = {
+  capture: "Take a note…",
+  emptyAll: "No notes yet. Use the bar above to take one.",
+  noun: "notes",
+};
+
 interface NotesGridProps {
-  notes: Note[];
+  notes: NoteLike[];
   /** Null while the session restores — drive: images wait; everything else renders. */
   token: string | null;
   readOnly: boolean;
   onOpen: (id: string) => void;
   onCreate: () => void;
+  /** Defaults to the Notes wording. */
+  copy?: NotesGridCopy;
 }
 
-function editedLabel(note: Note): string {
+function editedLabel(note: NoteLike): string {
   const edited = formatShortDate(note.updatedAt);
   const today = new Date();
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
@@ -30,10 +53,12 @@ function editedLabel(note: Note): string {
 /**
  * The Notes view — design 5a: capture bar, provenance filter chips, and a
  * Keep-style masonry grid. Agent-written notes carry the warm paper tint and
- * the ✳ chip; yours stay plain.
+ * the ✳ chip; yours stay plain. Also serves the AI Memories grid (same
+ * shape plus tag chips), with its own `copy`.
  */
-export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGridProps) {
+export function NotesGrid({ notes, token, readOnly, onOpen, onCreate, copy = NOTES_COPY }: NotesGridProps) {
   const [filter, setFilter] = useState<NotesFilter>("all");
+  const tagClass = useTagColors();
 
   const visible = filter === "all" ? notes : notes.filter((n) => n.source === filter);
 
@@ -45,9 +70,9 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
           className="notes-capture"
           onClick={onCreate}
           disabled={readOnly}
-          aria-label="Take a note"
+          aria-label={copy.capture.replace(/…$/, "")}
         >
-          Take a note…
+          {copy.capture}
         </button>
         <div className="notes-filters" role="group" aria-label="Filter notes">
           <button
@@ -77,9 +102,11 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
       {visible.length === 0 ? (
         <div className="notes-empty">
           {notes.length === 0 ? (
-            <p>No notes yet. Use the bar above to take one.</p>
+            <p>{copy.emptyAll}</p>
           ) : (
-            <p>No {filter === "agent" ? "agent" : "your"} notes here.</p>
+            <p>
+              No {filter === "agent" ? "agent" : "your"} {copy.noun} here.
+            </p>
           )}
         </div>
       ) : (
@@ -113,7 +140,14 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
                     </div>
                   )}
                   {!note.title && !hasText && images.length === 0 && (
-                    <span className="note-card-body empty">Empty note</span>
+                    <span className="note-card-body empty">Empty {copy.noun.replace(/s$/, "")}</span>
+                  )}
+                  {note.tags && note.tags.length > 0 && (
+                    <span className="card-tags">
+                      {note.tags.map((t) => (
+                        <TagChip key={t} name={t} colorClass={tagClass(t)} />
+                      ))}
+                    </span>
                   )}
                   <span className="note-card-meta">
                     {note.source === "agent" && (
@@ -134,7 +168,7 @@ export function NotesGrid({ notes, token, readOnly, onOpen, onCreate }: NotesGri
       )}
 
       {/* Mobile-only "+" — the capture bar's counterpart on small screens. */}
-      {!readOnly && <AddFab label="Take a note" onClick={onCreate} />}
+      {!readOnly && <AddFab label={copy.capture.replace(/…$/, "")} onClick={onCreate} />}
     </div>
   );
 }

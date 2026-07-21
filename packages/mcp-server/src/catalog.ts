@@ -68,8 +68,21 @@ export interface NotesCatalog {
   openNotes(id: string): SheetStore;
 }
 
-/** Everything `registerTools` runs against: boards and notes collections. */
-export type MemoriaCatalog = BoardCatalog & NotesCatalog;
+/**
+ * The memories side of the catalog — memories collections are spreadsheets
+ * tagged `memoriaMemories` (never listed as boards or notes collections),
+ * and a memories store is bound to the `Memories` tab. Same transport-free
+ * shape as `BoardCatalog`.
+ */
+export interface MemoriesCatalog {
+  /** Every memories collection this account can see, newest-modified first. */
+  listMemoriesCollections(): Promise<BoardInfo[]>;
+  /** A store bound to one memories collection's `Memories` tab. No existence check. */
+  openMemories(id: string): SheetStore;
+}
+
+/** Everything `registerTools` runs against: boards, notes, and memories collections. */
+export type MemoriaCatalog = BoardCatalog & NotesCatalog & MemoriesCatalog;
 
 /** The account has no notes collection at all. Written for the agent to relay. */
 export class NoNotesCollectionError extends Error {
@@ -101,4 +114,37 @@ export async function resolveNotes(catalog: NotesCatalog, notesId?: string): Pro
   if (collections.length === 0) throw new NoNotesCollectionError();
   if (collections.length > 1) throw new AmbiguousNotesCollectionError(collections);
   return catalog.openNotes(collections[0]!.id);
+}
+
+/** The account has no memories collection at all. Written for the agent to relay. */
+export class NoMemoriesCollectionError extends Error {
+  constructor() {
+    super(
+      "No AI Memories collection was found in this Google account's Drive. Open the web app, " +
+        "sign in with the same Google account used to add this connector, and create an " +
+        "AI Memories collection (the “+” next to the tabs → AI Memories) — then this connector " +
+        "will be able to read and write memories.",
+    );
+    this.name = "NoMemoriesCollectionError";
+  }
+}
+
+/** `memories_id` was omitted but the account has several memories collections — refusing to guess. */
+export class AmbiguousMemoriesCollectionError extends Error {
+  constructor(collections: BoardInfo[]) {
+    const listing = collections.map((c) => `"${c.name}" (memories_id ${c.id})`).join(", ");
+    super(
+      `This account has ${collections.length} memories collections — pass memories_id to say which one: ${listing}.`,
+    );
+    this.name = "AmbiguousMemoriesCollectionError";
+  }
+}
+
+/** Resolves which memories collection a tool call targets — same rules as `resolveBoard`. */
+export async function resolveMemories(catalog: MemoriesCatalog, memoriesId?: string): Promise<SheetStore> {
+  if (memoriesId) return catalog.openMemories(memoriesId);
+  const collections = await catalog.listMemoriesCollections();
+  if (collections.length === 0) throw new NoMemoriesCollectionError();
+  if (collections.length > 1) throw new AmbiguousMemoriesCollectionError(collections);
+  return catalog.openMemories(collections[0]!.id);
 }

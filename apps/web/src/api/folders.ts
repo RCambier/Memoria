@@ -15,6 +15,8 @@ import {
  *         attachments/     ← files attached to tasks
  *       notes/             ← the Notes sheet
  *         attachments/     ← images & files attached to notes
+ *       memories/          ← the AI Memories sheet
+ *         attachments/     ← images & files attached to memories
  *
  * Folders are found-or-created lazily, once per session. An earlier layout
  * used `boards/` instead of `todos/`; when that folder is found it's simply
@@ -28,8 +30,10 @@ interface MemoriaFolders {
   memoriaId: string;
   todosId: string;
   notesId: string;
+  memoriesId: string;
   notesAttachmentsId: string;
   todosAttachmentsId: string;
+  memoriesAttachmentsId: string;
 }
 
 /** v2: the `boards/` → `todos/` layout change re-checks every file's parents once. */
@@ -58,20 +62,24 @@ export function ensureMemoriaFolders(token: string): Promise<MemoriaFolders> {
   if (!foldersPromise) {
     foldersPromise = (async () => {
       const memoriaId = await ensureFolder(token, "Memoria", "root");
-      const [todosId, notesId] = await Promise.all([
+      const [todosId, notesId, memoriesId] = await Promise.all([
         ensureTodosFolder(token, memoriaId),
         ensureFolder(token, "notes", memoriaId),
+        ensureFolder(token, "memories", memoriaId),
       ]);
-      const [notesAttachmentsId, todosAttachmentsId] = await Promise.all([
+      const [notesAttachmentsId, todosAttachmentsId, memoriesAttachmentsId] = await Promise.all([
         ensureFolder(token, "attachments", notesId!),
         ensureFolder(token, "attachments", todosId!),
+        ensureFolder(token, "attachments", memoriesId!),
       ]);
       return {
         memoriaId,
         todosId: todosId!,
         notesId: notesId!,
+        memoriesId: memoriesId!,
         notesAttachmentsId: notesAttachmentsId!,
         todosAttachmentsId: todosAttachmentsId!,
+        memoriesAttachmentsId: memoriesAttachmentsId!,
       };
     })().catch((err: unknown) => {
       foldersPromise = null;
@@ -83,12 +91,16 @@ export function ensureMemoriaFolders(token: string): Promise<MemoriaFolders> {
 
 /** The folder a collection of `kind` belongs in. */
 export function folderForKind(folders: MemoriaFolders, kind: CollectionKind): string {
-  return kind === "notes" ? folders.notesId : folders.todosId;
+  return kind === "memories" ? folders.memoriesId : kind === "notes" ? folders.notesId : folders.todosId;
 }
 
-/** The attachments folder for a kind (files dropped on a note / a task). */
+/** The attachments folder for a kind (files dropped on a note / a memory / a task). */
 export function attachmentsFolderForKind(folders: MemoriaFolders, kind: CollectionKind): string {
-  return kind === "notes" ? folders.notesAttachmentsId : folders.todosAttachmentsId;
+  return kind === "memories"
+    ? folders.memoriesAttachmentsId
+    : kind === "notes"
+      ? folders.notesAttachmentsId
+      : folders.todosAttachmentsId;
 }
 
 function readOrganized(): Set<string> {
@@ -117,7 +129,7 @@ export function markOrganized(fileId: string): void {
 }
 
 /**
- * Moves every tagged collection into `Memoria/todos/` or `Memoria/notes/`.
+ * Moves every tagged collection into `Memoria/todos/`, `Memoria/notes/`, or `Memoria/memories/`.
  * Best-effort and quiet: a failure (offline, revoked file) leaves that file
  * where it is and retries on a later boot. Never touches file contents.
  */

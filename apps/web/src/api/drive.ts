@@ -1,6 +1,8 @@
 import {
   APP_PROPERTY_KEY,
   APP_PROPERTY_VALUE,
+  MEMORIES_APP_PROPERTY_KEY,
+  MEMORIES_APP_PROPERTY_VALUE,
   NOTES_APP_PROPERTY_KEY,
   NOTES_APP_PROPERTY_VALUE,
 } from "@memoria/sheet-core";
@@ -18,8 +20,8 @@ interface DriveFile {
   modifiedTime: string;
 }
 
-/** What a tagged Memoria spreadsheet holds — a Todos board or a Notes grid. */
-export type CollectionKind = "board" | "notes";
+/** What a tagged Memoria spreadsheet holds — a Todos board, a Notes grid, or an AI Memories grid. */
+export type CollectionKind = "board" | "notes" | "memories";
 
 export interface Collection extends DriveFile {
   kind: CollectionKind;
@@ -28,7 +30,8 @@ export interface Collection extends DriveFile {
 /**
  * THE collection-listing query — the one place the "what counts as a
  * Memoria sheet" filter lives: spreadsheets tagged at creation with
- * `todosBoard` (a board) or `memoriaNotes` (a notes grid) that the current
+ * `todosBoard` (a board), `memoriaNotes` (a notes grid), or
+ * `memoriaMemories` (an AI Memories grid) that the current
  * `drive.file`-scoped token can still see, newest-modified first. The
  * `appProperties` on each file say which kind it is. Used by the web app's
  * tabs/shelf and by the hosted MCP connector's catalog
@@ -39,7 +42,8 @@ export async function findCollections(token: string): Promise<Collection[]> {
   const q =
     `mimeType='${SPREADSHEET_MIME_TYPE}' and trashed=false and ` +
     `(appProperties has { key='${APP_PROPERTY_KEY}' and value='${APP_PROPERTY_VALUE}' } or ` +
-    `appProperties has { key='${NOTES_APP_PROPERTY_KEY}' and value='${NOTES_APP_PROPERTY_VALUE}' })`;
+    `appProperties has { key='${NOTES_APP_PROPERTY_KEY}' and value='${NOTES_APP_PROPERTY_VALUE}' } or ` +
+    `appProperties has { key='${MEMORIES_APP_PROPERTY_KEY}' and value='${MEMORIES_APP_PROPERTY_VALUE}' })`;
   const params = new URLSearchParams({
     q,
     orderBy: "modifiedTime desc",
@@ -56,9 +60,11 @@ export async function findCollections(token: string): Promise<Collection[]> {
     name,
     modifiedTime,
     kind:
-      appProperties?.[NOTES_APP_PROPERTY_KEY] === NOTES_APP_PROPERTY_VALUE
-        ? ("notes" as const)
-        : ("board" as const),
+      appProperties?.[MEMORIES_APP_PROPERTY_KEY] === MEMORIES_APP_PROPERTY_VALUE
+        ? ("memories" as const)
+        : appProperties?.[NOTES_APP_PROPERTY_KEY] === NOTES_APP_PROPERTY_VALUE
+          ? ("notes" as const)
+          : ("board" as const),
   }));
 }
 
@@ -72,13 +78,23 @@ export async function tagAsNotes(token: string, fileId: string): Promise<void> {
   await tagFile(token, fileId, { [NOTES_APP_PROPERTY_KEY]: NOTES_APP_PROPERTY_VALUE });
 }
 
+/** Tags a spreadsheet as a Memoria AI Memories collection. */
+export async function tagAsMemories(token: string, fileId: string): Promise<void> {
+  await tagFile(token, fileId, { [MEMORIES_APP_PROPERTY_KEY]: MEMORIES_APP_PROPERTY_VALUE });
+}
+
 /**
  * Unlinks a sheet from the app by removing its kind tag. The file itself is
  * untouched — it stays in the user's Drive and can be re-linked any time via
  * the Picker (which re-tags it).
  */
 export async function untagCollection(token: string, fileId: string, kind: CollectionKind): Promise<void> {
-  const key = kind === "notes" ? NOTES_APP_PROPERTY_KEY : APP_PROPERTY_KEY;
+  const key =
+    kind === "memories"
+      ? MEMORIES_APP_PROPERTY_KEY
+      : kind === "notes"
+        ? NOTES_APP_PROPERTY_KEY
+        : APP_PROPERTY_KEY;
   // Drive removes an appProperties key when it's set to null.
   await tagFile(token, fileId, { [key]: null });
 }

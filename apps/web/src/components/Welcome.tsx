@@ -114,6 +114,14 @@ function HeroScene() {
         </div>
       </div>
 
+      <div className="hero-card hero-card-memories">
+        <span className="hero-card-title">AI Memories</span>
+        <div className="hero-card-lines">
+          <span className="hero-bar note" style={{ width: "90%" }} />
+          <span className="hero-bar note" style={{ width: "70%" }} />
+        </div>
+      </div>
+
       <div className="hero-cursor hero-cursor-claude">
         <CursorGlyph color="var(--accent)" />
         <span>✳ Claude</span>

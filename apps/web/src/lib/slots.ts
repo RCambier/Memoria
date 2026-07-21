@@ -2,7 +2,7 @@ import type { Collection, CollectionKind } from "../api/drive.js";
 
 /**
  * The app manages exactly one connected sheet per kind (one Todos board, one
- * Notes grid). Drive can still hold more tagged sheets of a kind — created
+ * Notes grid, one AI Memories grid). Drive can still hold more tagged sheets of a kind — created
  * elsewhere or left over from older versions — so the listing is folded into
  * a *slot* per kind: the connected sheet plus any extras, which the setup
  * screen surfaces for switching to or unlinking.
@@ -22,12 +22,12 @@ export type Slots = Record<CollectionKind, KindSlot>;
  */
 export function deriveSlots(
   collections: readonly Collection[],
-  cachedIds: { board: string | null; notes: string | null },
+  cachedIds: { board: string | null; notes: string | null; memories: string | null },
 ): Slots {
   const slotFor = (kind: CollectionKind): KindSlot => {
     const ofKind = collections.filter((c) => c.kind === kind);
     const connected = ofKind.find((c) => c.id === cachedIds[kind]) ?? ofKind[0] ?? null;
     return { connected, extras: ofKind.filter((c) => c !== connected) };
   };
-  return { board: slotFor("board"), notes: slotFor("notes") };
+  return { board: slotFor("board"), notes: slotFor("notes"), memories: slotFor("memories") };
 }

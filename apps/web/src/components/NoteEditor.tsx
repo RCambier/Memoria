@@ -2,15 +2,19 @@ import type { Note } from "@memoria/sheet-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatFullDate } from "../lib/dates.js";
 import { MAX_CELL_CHARS } from "@memoria/sheet-core";
+import { useTagColors } from "../lib/tagColor.js";
 import { isAttachableImage, uploadNoteAttachment } from "../notes/attachments.js";
 import { AgentMark } from "./AgentMark.js";
 import { Markdown } from "./Markdown.js";
 import { PaperclipIcon } from "./PaperclipIcon.js";
+import { TagChip } from "./TagChip.js";
+import { TagsEditor } from "./TagsEditor.js";
 
 type EditorMode = "view" | "edit" | "confirm";
 
 interface NoteEditorProps {
-  note: Note;
+  /** A note, or anything note-shaped (an AI memory — then pass `onTagsChange` to edit its tags). */
+  note: Note & { tags?: string[] };
   token: string | null;
   readOnly: boolean;
   /** New notes open straight into the editor; existing ones open rendered. */
@@ -18,6 +22,12 @@ interface NoteEditorProps {
   onClose: () => void;
   onSave: (patch: { title?: string; body?: string }) => void;
   onDelete: () => void;
+  /** Provided by the memories view: shows the tag chips/editor and saves tag changes immediately. */
+  onTagsChange?: (tags: string[]) => void;
+  /** What the item is called in the UI ("note" by default; "memory" for AI Memories). */
+  noun?: string;
+  /** Where a pasted/dropped file uploads to — defaults to the notes attachments folder. */
+  uploadAttachment?: (token: string, file: File) => Promise<{ fileId: string; markdown: string }>;
 }
 
 /** How long the editor waits after the last keystroke before autosaving. */
@@ -40,7 +50,11 @@ export function NoteEditor({
   onClose,
   onSave,
   onDelete,
+  onTagsChange,
+  noun = "note",
+  uploadAttachment = uploadNoteAttachment,
 }: NoteEditorProps) {
+  const tagClass = useTagColors();
   const [mode, setMode] = useState<EditorMode>(readOnly ? "view" : startInEdit ? "edit" : "view");
   // Which field the editor jumps to when you click into a note — so clicking the
   // title lands the cursor in the title, clicking the body lands it in the body.
@@ -163,7 +177,7 @@ export function NoteEditor({
       insertAtCursor(placeholder);
       setUploads((n) => n + 1);
       try {
-        const { markdown } = await uploadNoteAttachment(token, file);
+        const { markdown } = await uploadAttachment(token, file);
         patchBody(placeholder, markdown);
       } catch (err) {
         patchBody(`${placeholder}\n`, "");
@@ -208,6 +222,7 @@ export function NoteEditor({
   }
 
   const agent = note.source === "agent";
+  const capNoun = noun.charAt(0).toUpperCase() + noun.slice(1);
 
   return (
     <div
@@ -220,7 +235,7 @@ export function NoteEditor({
         className={`detail-panel note-panel${agent ? " agent" : ""}${dragOver ? " drag-over" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-label={note.title || "Note"}
+        aria-label={note.title || capNoun}
         onClick={(e) => e.stopPropagation()}
         onDragOver={(e) => {
           if (e.dataTransfer?.types.includes("Files")) {
@@ -265,7 +280,7 @@ export function NoteEditor({
                 placeholder="Title"
                 value={draftTitle}
                 maxLength={MAX_CELL_CHARS}
-                aria-label="Note title"
+                aria-label={`${capNoun} title`}
                 onChange={(e) => setDraftTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -280,10 +295,11 @@ export function NoteEditor({
                 placeholder={"Write in markdown — paste or drop images and files to attach them…"}
                 value={draftBody}
                 maxLength={MAX_CELL_CHARS}
-                aria-label="Note body (markdown)"
+                aria-label={`${capNoun} body (markdown)`}
                 onChange={(e) => setDraftBody(e.target.value)}
                 onPaste={handlePaste}
               />
+              {onTagsChange && <TagsEditor tags={note.tags ?? []} onChange={onTagsChange} />}
               {uploadError && <p className="note-upload-error">{uploadError}</p>}
             </div>
             <div className="detail-actions note-foot">
@@ -341,6 +357,13 @@ export function NoteEditor({
               >
                 {draftTitle || (readOnly ? "" : "Title")}
               </h2>
+              {note.tags && note.tags.length > 0 && (
+                <div className="card-tags">
+                  {note.tags.map((t) => (
+                    <TagChip key={t} name={t} colorClass={tagClass(t)} />
+                  ))}
+                </div>
+              )}
               <div
                 className={`note-view-body${readOnly ? "" : " editable"}`}
                 title={readOnly ? undefined : "Click to edit"}
@@ -349,7 +372,7 @@ export function NoteEditor({
                 {draftBody.trim() !== "" ? (
                   <Markdown text={draftBody} token={token} />
                 ) : (
-                  <p className="note-view-empty">{readOnly ? "Empty note." : "Click to write…"}</p>
+                  <p className="note-view-empty">{readOnly ? `Empty ${noun}.` : "Click to write…"}</p>
                 )}
               </div>
             </div>
@@ -365,13 +388,13 @@ export function NoteEditor({
                 </button>
                 <div className="flex-spacer" />
                 <span className="note-edit-hint" aria-hidden="true">
-                  Click the note to edit
+                  Click the {noun} to edit
                 </span>
               </div>
             )}
             {!readOnly && mode === "confirm" && (
               <div className="detail-confirm note-foot" role="alertdialog" aria-label="Confirm delete">
-                <p>Delete {note.title ? `“${note.title}”` : "this note"}? This can’t be undone.</p>
+                <p>Delete {note.title ? `“${note.title}”` : `this ${noun}`}? This can’t be undone.</p>
                 <div className="detail-actions">
                   <div className="flex-spacer" />
                   <button type="button" className="btn-ghost btn-sm" onClick={() => setMode("view")}>

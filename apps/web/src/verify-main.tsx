@@ -21,10 +21,14 @@
 import { createRoot } from "react-dom/client";
 import {
   HEADERS,
+  MEMORIES_APP_PROPERTY_KEY,
+  MEMORIES_HEADERS,
+  memoryToRow,
   NOTES_APP_PROPERTY_KEY,
   NOTES_HEADERS,
   noteToRow,
   taskToRow,
+  type Memory,
   type Note,
   type Task,
 } from "@memoria/sheet-core";
@@ -53,6 +57,8 @@ declare global {
     __gtasks: () => Record<string, FakeGTask[]>;
     /** The fake backend's current Notes grid (header + rows) — for assertions. */
     __notesGrid: () => string[][];
+    /** The fake backend's current Memories grid (header + rows) — for assertions. */
+    __memoriesGrid: () => string[][];
   }
 }
 
@@ -77,6 +83,17 @@ function task(id: string, title: string, status: Task["status"], dueDate = "", t
 
 function note(id: string, title: string, body: string, source: Note["source"], updatedAt = now): Note {
   return { id, title, body, source, createdAt: updatedAt, updatedAt };
+}
+
+function memory(
+  id: string,
+  title: string,
+  body: string,
+  tags: string[],
+  source: Memory["source"],
+  updatedAt = now,
+): Memory {
+  return { id, title, body, tags, source, createdAt: updatedAt, updatedAt };
 }
 
 const grid: string[][] = [
@@ -117,6 +134,30 @@ const notesGrid: string[][] = [
   ),
 ];
 
+const memoriesGrid: string[][] = [
+  [...MEMORIES_HEADERS],
+  memoryToRow(
+    memory(
+      "m1",
+      "Prefers async communication",
+      "Prefers email over calls; batches replies in the morning.",
+      ["preferences", "work"],
+      "agent",
+      new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    ),
+  ),
+  memoryToRow(
+    memory(
+      "m2",
+      "Partner's birthday",
+      "**14 October** — likes hiking gear.",
+      ["family"],
+      "user",
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    ),
+  ),
+];
+
 // A 1×1 red PNG — what attachment downloads return.
 const TINY_PNG_B64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -133,24 +174,28 @@ window.__sheetWrites = [];
 window.__driveWrites = [];
 window.__grid = () => grid.map((r) => [...r]);
 window.__notesGrid = () => notesGrid.map((r) => [...r]);
+window.__memoriesGrid = () => memoriesGrid.map((r) => [...r]);
 
 let uploadCounter = 0;
 
 // ---- Fake Drive file store (the tagged collections the listing serves) ----
-// `?nokind=notes` (or `board`) omits that kind's sheets, so the empty-tab
-// setup (design 9b) can be driven.
+// `?nokind=notes` (or `board`, or `memories`) omits that kind's sheets, so
+// the empty-tab setup (design 9b) can be driven.
 const noKind = new URLSearchParams(window.location.search).get("nokind");
 const allDriveFiles: { id: string; name: string; appProperties: Record<string, string> }[] = [
   { id: "sheet-1", name: "Todos", appProperties: { todosBoard: "1" } },
   { id: "sheet-2", name: "Groceries", appProperties: { todosBoard: "1" } },
   { id: "sheet-3", name: "Notes", appProperties: { [NOTES_APP_PROPERTY_KEY]: "1" } },
+  { id: "sheet-4", name: "AI Memories", appProperties: { [MEMORIES_APP_PROPERTY_KEY]: "1" } },
 ];
 const driveFiles = allDriveFiles.filter((f) =>
   noKind === "notes"
     ? f.appProperties[NOTES_APP_PROPERTY_KEY] === undefined
-    : noKind === "board"
-      ? f.appProperties["todosBoard"] === undefined
-      : true,
+    : noKind === "memories"
+      ? f.appProperties[MEMORIES_APP_PROPERTY_KEY] === undefined
+      : noKind === "board"
+        ? f.appProperties["todosBoard"] === undefined
+        : true,
 );
 
 // ---- Fake Google Tasks backend (for the calendar mirror) ----
@@ -167,7 +212,8 @@ function rowNumberFromUrl(url: string): number | null {
 
 /** Which fake grid a values URL addresses (the tab name is in the range). */
 function gridForUrl(url: string): string[][] {
-  return decodeURIComponent(url).includes("Notes!") ? notesGrid : grid;
+  const decoded = decodeURIComponent(url);
+  return decoded.includes("Memories!") ? memoriesGrid : decoded.includes("Notes!") ? notesGrid : grid;
 }
 
 const realFetch = window.fetch.bind(window);
@@ -281,6 +327,7 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
           sheets: [
             { properties: { title: "Tasks", sheetId: 0 } },
             { properties: { title: "Notes", sheetId: 1 } },
+            { properties: { title: "Memories", sheetId: 2 } },
           ],
         });
       return json({ values: gridForUrl(url).map((r) => [...r]) });
@@ -312,7 +359,10 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         | undefined;
       const range = requests?.[0]?.deleteDimension?.range;
       if (range?.startIndex !== undefined) {
-        (range.sheetId === 1 ? notesGrid : grid).splice(range.startIndex, 1);
+        (range.sheetId === 2 ? memoriesGrid : range.sheetId === 1 ? notesGrid : grid).splice(
+          range.startIndex,
+          1,
+        );
       }
     }
     return json({});
@@ -324,6 +374,6 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 localStorage.setItem("todos:spreadsheetId", "sheet-1");
 localStorage.setItem("todos:collectionKind", "board");
 // The organizer memo — the fixture pretends everything is already filed.
-localStorage.setItem("todos:organizedFiles:v2", JSON.stringify(["sheet-1", "sheet-2", "sheet-3"]));
+localStorage.setItem("todos:organizedFiles:v2", JSON.stringify(["sheet-1", "sheet-2", "sheet-3", "sheet-4"]));
 
 createRoot(document.getElementById("root")!).render(<App />);

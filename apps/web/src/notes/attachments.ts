@@ -93,7 +93,7 @@ function attachmentName(original: File | Blob, uploaded: Blob): string {
 
 async function uploadToKind(
   token: string,
-  kind: "board" | "notes",
+  kind: "board" | "notes" | "memories",
   file: File | Blob,
 ): Promise<{ fileId: string; name: string; isImage: boolean }> {
   const isImage = isAttachableImage(file);
@@ -114,6 +114,15 @@ export async function uploadNoteAttachment(
   file: File | Blob,
 ): Promise<{ fileId: string; markdown: string }> {
   const { fileId, name, isImage } = await uploadToKind(token, "notes", file);
+  return { fileId, markdown: noteAttachmentMarkdown(name, fileId, isImage) };
+}
+
+/** Uploads one file for a memory and returns the markdown that embeds it (same format as notes). */
+export async function uploadMemoryAttachment(
+  token: string,
+  file: File | Blob,
+): Promise<{ fileId: string; markdown: string }> {
+  const { fileId, name, isImage } = await uploadToKind(token, "memories", file);
   return { fileId, markdown: noteAttachmentMarkdown(name, fileId, isImage) };
 }
 

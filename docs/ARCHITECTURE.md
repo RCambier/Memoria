@@ -75,12 +75,12 @@ React + TypeScript + Vite static SPA. No backend of any kind.
     — plus basic profile (name, photo, email) for the account menu; all
     non-sensitive. Sheets/Drive calls are plain `fetch` against the REST
     APIs with the browser-held access token.
-- **The app manages exactly two sheets** — one Todos board and one Notes
-  grid — surfaced as two fixed tabs (visible on desktop and mobile; the
-  tabs are the whole navigation, there is no separate "sheets" screen —
-  design 9b). `lib/slots.ts` folds the Drive listing into one *slot* per
-  kind: the connected sheet plus any extras.
-  - A kind **with** a connected sheet shows its board/notes view.
+- **The app manages exactly three sheets** — one Todos board, one Notes
+  grid, and one AI Memories grid — surfaced as three fixed tabs (visible on
+  desktop and mobile; the tabs are the whole navigation, there is no
+  separate "sheets" screen — design 9b). `lib/slots.ts` folds the Drive
+  listing into one *slot* per kind: the connected sheet plus any extras.
+  - A kind **with** a connected sheet shows its board/notes/memories view.
   - A kind **without** one shows its setup inline in the tab's content
     area (`components/KindEmpty.tsx`): _create_ (new spreadsheet, tagged,
     header row written, filed under `Memoria/…`), _link an existing sheet_
@@ -194,10 +194,16 @@ re-locates the row by ID first, exactly like the web app):
 | `add_note`              | `title`, optional markdown `body`                                                            | append a note                |
 | `update_note`           | `id`, optional `title`, `body` (replaces whole body)                                         | edit fields                  |
 | `delete_note`           | `id`                                                                                         | delete that row              |
+| `list_memory_collections` | —                                                                                          | AI Memories collections      |
+| `list_memories`         | —                                                                                            | memories, newest-edited first |
+| `add_memory`            | `title`, optional markdown `body`, `tags`                                                    | append a memory              |
+| `update_memory`         | `id`, optional `title`, `body`, `tags` (each replaces the whole field)                       | edit fields                  |
+| `delete_memory`         | `id`                                                                                         | delete that row              |
 
 No bulk or whole-sheet tools — a confused agent can damage at most one row,
-and Sheets version history covers recovery. Tasks and notes created via MCP
-set `source = "agent"` (see schema) so the UI can show provenance.
+and Sheets version history covers recovery. Tasks, notes, and memories
+created via MCP set `source = "agent"` (see schema) so the UI can show
+provenance.
 
 The package's single entrypoint exports `registerTools` and the
 `SheetStore` / catalog contracts — no HTTP, no filesystem access, no
@@ -256,17 +262,18 @@ credentials, not user credentials.
 
 ## Notes — the second collection kind
 
-Since 2026-07, a tagged spreadsheet is a **collection** of one of two kinds:
-a **board** (the kanban above) or a **notes** grid (design 5a/5b: a
-Keep-style masonry of small markdown notes, same shell, second tab). The
-kind only changes the view — both are plain sheets in the user's Drive,
-and the app connects exactly one of each (see *First run* above).
+Since 2026-07, a tagged spreadsheet is a **collection** of one of several
+kinds: a **board** (the kanban above), a **notes** grid (design 5a/5b: a
+Keep-style masonry of small markdown notes, same shell, second tab), or an
+**AI Memories** grid (below). The kind only changes the view — all are
+plain sheets in the user's Drive, and the app connects exactly one of each
+(see *First run* above).
 
 - **Tagging**: boards keep `appProperties.todosBoard = "1"`; notes sheets
   are tagged `memoriaNotes = "1"` instead. The keys are deliberately
   different so the kinds can never be confused: everything lists through
   one Drive query (`findCollections`) that reads the tags back, the web
-  app's tabs/shelf show both kinds, and the hosted MCP connector splits
+  app's tabs/shelf show every kind, and the hosted MCP connector splits
   the same listing so the board tools can never open a notes sheet (and
   vice versa).
 - **Agent access**: the connector exposes notes to agents through their own
@@ -304,6 +311,31 @@ and the app connects exactly one of each (see *First run* above).
   Agent-written notes render with a warm paper tint and an ✳ chip; the
   toolbar chips filter all / by you / by agents.
 
+## AI Memories — the third collection kind
+
+An **AI Memories** collection stores the facts and memories an AI gathers
+about its user over time — preferences, people, context, decisions. It is
+deliberately the notes grid's twin: free-text markdown entries with
+attachments, plus **tags** to categorize (`family`, `preferences`,
+`work`, …).
+
+- **Tagging**: memories sheets carry `appProperties.memoriaMemories = "1"`
+  — a third key, so no client ever mistakes a memories sheet for a notes
+  sheet or a board.
+- **Agent access**: their own connector tools (`list_memory_collections`,
+  `list_memories`, `add_memory`, `update_memory`, `delete_memory`), with
+  `tags` on add/update; the `list_memories` description nudges agents to
+  update an existing entry when a fact changes rather than record it twice.
+  Agent-written memories land with `source = "agent"`.
+- **Schema**: one tab named `Memories`, header `id, title, body, tags,
+  source, created_at, updated_at`. `body` is markdown; `tags` is
+  comma-separated like task tags (`sheet-core`'s `memories.ts`).
+- **View & sync**: the third tab reuses the notes grid and editor (tag
+  chips on cards, a tag editor in the dialog — the same `TagsEditor` the
+  board uses) and the same local-first replica + outbox scheme
+  (`memories/useMemories.ts`). Attachments upload to
+  `Memoria/memories/attachments/`.
+
 ### Drive layout
 
 The app files its spreadsheets under one folder tree in My Drive, one
@@ -314,6 +346,8 @@ Memoria/
   todos/             the Todos sheet
   notes/             the Notes sheet
     attachments/     images pasted into notes
+  memories/          the AI Memories sheet
+    attachments/     images pasted into memories
 ```
 
 New sheets are created there; on boot the web app quietly moves any tagged

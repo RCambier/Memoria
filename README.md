@@ -1,9 +1,10 @@
 # Memoria
 
 **Memoria** — a quiet memory for you and your agents, over Google Sheets you own.
-Kanban todo boards and grids of markdown notes whose only backend is Google
-Sheets in your own Drive (filed under `Memoria/todos/` and `Memoria/notes/`;
-images pasted into notes land in `Memoria/notes/attachments/`).
+Kanban todo boards, grids of markdown notes, and AI Memories — the facts your
+agents gather about you over time — whose only backend is Google Sheets in
+your own Drive (filed under `Memoria/todos/`, `Memoria/notes/`, and
+`Memoria/memories/`; pasted images land in each kind's `attachments/` folder).
 Two clients read and write that sheet: a web app (the board UI) and an MCP
 server (for coding agents like Claude Code or Codex). Neither holds state —
 the sheet is the single source of truth, so your board, your agents, and
@@ -22,8 +23,8 @@ See `docs/ARCHITECTURE.md` for the full design.
 
 **Just want to use it?** Use a hosted instance — for example
 [memoria-board.vercel.app](https://memoria-board.vercel.app). Sign in
-with Google and create your two sheets — a **Todos** board and a **Notes**
-grid, each backed by a Google Sheet in your own Drive. The app can only
+with Google and create your sheets — a **Todos** board, a **Notes** grid,
+and an **AI Memories** grid, each backed by a Google Sheet in your own Drive. The app can only
 touch files it created or that you explicitly picked (`drive.file` scope) —
 never the rest of your Drive — and the deployment stores nothing about you
 anywhere.
@@ -71,7 +72,9 @@ docs/                  Architecture, setup guide, design mockup
 - **`packages/mcp-server`** defines the tools (`list_boards`, `list_tasks`,
   `add_task`, `update_task`, `move_task`, `complete_task`, `delete_task`,
   plus `list_note_collections`, `list_notes`, `add_note`, `update_note`,
-  `delete_note`), transport-free; the Vercel function in `apps/web/api`
+  `delete_note`, plus `list_memory_collections`, `list_memories`,
+  `add_memory`, `update_memory`, `delete_memory`), transport-free; the
+  Vercel function in `apps/web/api`
   serves them as a remote MCP connector authenticated with each caller's
   own Google account.
 

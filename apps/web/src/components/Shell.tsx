@@ -6,6 +6,8 @@ import { useBoard } from "../board/useBoard.js";
 import { useTasksMirror } from "../calendar/useTasksMirror.js";
 import { getCalendarMirrorEnabled, setCalendarMirrorEnabled } from "../lib/storage.js";
 import { useBackClose } from "../lib/useBackClose.js";
+import { useMemories } from "../memories/useMemories.js";
+import { uploadMemoryAttachment } from "../notes/attachments.js";
 import { useNotes } from "../notes/useNotes.js";
 import { Board } from "./Board.js";
 import { KindEmpty } from "./KindEmpty.js";
@@ -22,10 +24,10 @@ interface ShellProps {
   sessionOffline?: boolean;
   /** Empty string when the active kind has no connected sheet — then the tab shows inline setup (9b). */
   spreadsheetId: string;
-  /** Which view this spreadsheet gets: the kanban board or the notes grid. */
+  /** Which view this spreadsheet gets: the kanban board, the notes grid, or the AI Memories grid. */
   kind: CollectionKind;
   profile: UserProfile | null;
-  /** Which kinds have a connected sheet (for the fixed Todos/Notes tabs). */
+  /** Which kinds have a connected sheet (for the fixed Todos/Notes/AI Memories tabs). */
   connectedKinds: Record<CollectionKind, boolean>;
   /** Other tagged sheets of the active kind, offered by the empty state as "connect existing". */
   extras: Collection[];
@@ -43,9 +45,10 @@ interface ShellProps {
 /** Which settings drawer is open — each account-menu entry opens its own. */
 type SettingsSection = "agents" | "calendar";
 
-/** Chooses the view for the active kind. Empty (no sheet) → inline setup; otherwise the board or notes view. */
+/** Chooses the view for the active kind. Empty (no sheet) → inline setup; otherwise the board, notes, or memories view. */
 export function Shell(props: ShellProps) {
   if (!props.spreadsheetId) return <EmptyShell {...props} />;
+  if (props.kind === "memories") return <MemoriesShell {...props} />;
   return props.kind === "notes" ? <NotesShell {...props} /> : <BoardShell {...props} />;
 }
 
@@ -303,6 +306,105 @@ function NotesShell({
 
       {/* The calendar mirror is a board concern (it mirrors due-dated tasks);
           from the notes view the calendar drawer points back to the Todos tab. */}
+      {settingsOpen && (
+        <SettingsPanel section={settingsOpen} onClose={() => setSettingsOpen(null)} calendarMirror={null} />
+      )}
+    </div>
+  );
+}
+
+/** The AI Memories view — the notes shell's twin, with tags on the cards and in the editor. */
+function MemoriesShell({
+  token,
+  sessionOffline = false,
+  spreadsheetId,
+  profile,
+  connectedKinds,
+  onSelectKind,
+  onSignOut,
+}: ShellProps) {
+  const { state, lastSyncedAt, offline, pendingCount, writeRejected, addMemory, updateMemory, deleteMemory } =
+    useMemories(token, spreadsheetId);
+  const [settingsOpen, setSettingsOpen] = useState<SettingsSection | null>(null);
+  // The open memory, if any — looked up live so a sync refreshes the dialog.
+  const [open, setOpen] = useState<{ id: string; isNew: boolean } | null>(null);
+  useBackClose(settingsOpen !== null, () => setSettingsOpen(null));
+  useBackClose(open !== null, () => setOpen(null));
+
+  const readOnly = state.status !== "ready";
+  const memories = state.status === "ready" ? state.memories : [];
+  const openMemory = open ? memories.find((m) => m.id === open.id) : undefined;
+
+  function handleCreate(): void {
+    const memory = addMemory({});
+    if (memory) setOpen({ id: memory.id, isNew: true });
+  }
+
+  return (
+    <div className="app">
+      <Topbar
+        spreadsheetId={spreadsheetId}
+        status={state.status}
+        lastSyncedAt={lastSyncedAt}
+        offline={offline || sessionOffline}
+        pendingCount={pendingCount}
+        profile={profile}
+        activeKind="memories"
+        connectedKinds={connectedKinds}
+        onSelectKind={onSelectKind}
+        onOpenSettings={setSettingsOpen}
+        onSignOut={onSignOut}
+      />
+
+      {state.status === "malformed" && <MalformedBanner error={state.error} spreadsheetId={spreadsheetId} />}
+      {state.status === "error" && (
+        <div className="banner">
+          <span className="icon">⚠</span>
+          <div>
+            <strong>Can&rsquo;t reach the sheet right now</strong>
+            <span>{state.message} Memories keep trying every few seconds.</span>
+          </div>
+        </div>
+      )}
+      {writeRejected && (
+        <div className="banner">
+          <span className="icon">⚠</span>
+          <div>
+            <strong>Google rejected a queued change</strong>
+            <span>{writeRejected} Edit or delete that memory to unblock syncing.</span>
+          </div>
+        </div>
+      )}
+
+      <NotesGrid
+        notes={memories}
+        token={token}
+        readOnly={readOnly}
+        onOpen={(id) => setOpen({ id, isNew: false })}
+        onCreate={handleCreate}
+        copy={{
+          capture: "Record a memory…",
+          emptyAll:
+            "No memories yet. Your AI agents will gather facts about you here over time — or record one yourself.",
+          noun: "memories",
+        }}
+      />
+
+      {openMemory && open && (
+        <NoteEditor
+          note={openMemory}
+          token={token}
+          readOnly={readOnly}
+          startInEdit={open.isNew}
+          noun="memory"
+          uploadAttachment={uploadMemoryAttachment}
+          onClose={() => setOpen(null)}
+          onSave={(patch) => updateMemory(openMemory.id, patch)}
+          onTagsChange={(tags) => updateMemory(openMemory.id, { tags })}
+          onDelete={() => deleteMemory(openMemory.id)}
+        />
+      )}
+
       {settingsOpen && (
         <SettingsPanel section={settingsOpen} onClose={() => setSettingsOpen(null)} calendarMirror={null} />
       )}

@@ -1,10 +1,11 @@
-import { isBlankRow, parseNotesSheet, parseSheet } from "@memoria/sheet-core";
-import { moveToFolder, tagAsBoard, tagAsNotes, type CollectionKind } from "../api/drive.js";
+import { isBlankRow, parseMemoriesSheet, parseNotesSheet, parseSheet } from "@memoria/sheet-core";
+import { moveToFolder, tagAsBoard, tagAsMemories, tagAsNotes, type CollectionKind } from "../api/drive.js";
 import { ensureMemoriaFolders, folderForKind, markOrganized } from "../api/folders.js";
 import {
   createSpreadsheet,
   getValues,
   listTabs,
+  MEMORIES_TAB,
   NOTES_TAB,
   renameTab,
   TASKS_TAB,
@@ -13,17 +14,21 @@ import {
 } from "../api/sheets.js";
 
 function tabForKind(kind: CollectionKind): SheetTab {
-  return kind === "notes" ? NOTES_TAB : TASKS_TAB;
+  return kind === "memories" ? MEMORIES_TAB : kind === "notes" ? NOTES_TAB : TASKS_TAB;
 }
 
 function tagForKind(token: string, spreadsheetId: string, kind: CollectionKind): Promise<void> {
-  return kind === "notes" ? tagAsNotes(token, spreadsheetId) : tagAsBoard(token, spreadsheetId);
+  return kind === "memories"
+    ? tagAsMemories(token, spreadsheetId)
+    : kind === "notes"
+      ? tagAsNotes(token, spreadsheetId)
+      : tagAsBoard(token, spreadsheetId);
 }
 
 /**
  * Creates a brand-new collection sheet: a spreadsheet with the right tab +
  * header row, the appProperties tag for reconnect, filed under
- * `Memoria/todos/` or `Memoria/notes/` in the user's Drive. Filing is
+ * `Memoria/todos/`, `Memoria/notes/`, or `Memoria/memories/` in the user's Drive. Filing is
  * best-effort — a failure leaves the sheet in the Drive root, where the
  * boot-time organizer will pick it up later.
  */
@@ -94,7 +99,12 @@ export async function attachOrBootstrap(
     return { kind: "bootstrapped" };
   }
 
-  const result = kind === "notes" ? parseNotesSheet(rawRows) : parseSheet(rawRows);
+  const result =
+    kind === "memories"
+      ? parseMemoriesSheet(rawRows)
+      : kind === "notes"
+        ? parseNotesSheet(rawRows)
+        : parseSheet(rawRows);
   if (result.ok) {
     await tagForKind(token, spreadsheetId, kind);
     markOrganized(spreadsheetId);

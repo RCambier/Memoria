@@ -1,4 +1,11 @@
-import { HEADERS, NOTES_HEADERS, NOTES_TAB_NAME, SHEET_TAB_NAME } from "@memoria/sheet-core";
+import {
+  HEADERS,
+  MEMORIES_HEADERS,
+  MEMORIES_TAB_NAME,
+  NOTES_HEADERS,
+  NOTES_TAB_NAME,
+  SHEET_TAB_NAME,
+} from "@memoria/sheet-core";
 import { authedFetch, authedJson } from "./http.js";
 
 const BASE = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -15,6 +22,7 @@ export interface SheetTab {
 
 export const TASKS_TAB: SheetTab = { name: SHEET_TAB_NAME, headers: HEADERS };
 export const NOTES_TAB: SheetTab = { name: NOTES_TAB_NAME, headers: NOTES_HEADERS };
+export const MEMORIES_TAB: SheetTab = { name: MEMORIES_TAB_NAME, headers: MEMORIES_HEADERS };
 
 /** Last column letter, derived from the header count so it can't drift from the schema. */
 function lastColumn(tab: SheetTab): string {

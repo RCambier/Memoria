@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   AmbiguousBoardError,
+  AmbiguousMemoriesCollectionError,
   AmbiguousNotesCollectionError,
   NoBoardError,
+  NoMemoriesCollectionError,
   NoNotesCollectionError,
   resolveBoard,
+  resolveMemories,
   resolveNotes,
   type BoardCatalog,
   type BoardInfo,
+  type MemoriesCatalog,
   type NotesCatalog,
 } from "../src/catalog.js";
 import type { SheetStore } from "@memoria/sheet-core";
@@ -115,6 +119,55 @@ describe("resolveNotes", () => {
     expect(err).toBeInstanceOf(AmbiguousNotesCollectionError);
     expect((err as Error).message).toContain('"Notes" (notes_id a)');
     expect((err as Error).message).toContain('"Recipes" (notes_id b)');
+    expect(catalog.opened).toEqual([]);
+  });
+});
+
+/** The memories-side twin of `fakeCatalog`. */
+function fakeMemoriesCatalog(
+  collections: BoardInfo[],
+): MemoriesCatalog & { opened: string[]; listed: number } {
+  return {
+    opened: [],
+    listed: 0,
+    async listMemoriesCollections() {
+      this.listed += 1;
+      return collections;
+    },
+    openMemories(id: string) {
+      this.opened.push(id);
+      return fakeStore(id);
+    },
+  };
+}
+
+describe("resolveMemories", () => {
+  it("opens the named collection directly, without listing", async () => {
+    const catalog = fakeMemoriesCatalog([boardInfo("a", "AI Memories"), boardInfo("b", "Work Memories")]);
+    const store = await resolveMemories(catalog, "b");
+    expect(await store.readRows()).toEqual([["b"]]);
+    expect(catalog.opened).toEqual(["b"]);
+    expect(catalog.listed).toBe(0);
+  });
+
+  it("defaults to the account's only memories collection when memoriesId is omitted", async () => {
+    const catalog = fakeMemoriesCatalog([boardInfo("only", "AI Memories")]);
+    await resolveMemories(catalog);
+    expect(catalog.opened).toEqual(["only"]);
+  });
+
+  it("throws NoMemoriesCollectionError when the account has none", async () => {
+    const catalog = fakeMemoriesCatalog([]);
+    await expect(resolveMemories(catalog)).rejects.toBeInstanceOf(NoMemoriesCollectionError);
+    expect(catalog.opened).toEqual([]);
+  });
+
+  it("refuses to guess between several collections, naming them in the error", async () => {
+    const catalog = fakeMemoriesCatalog([boardInfo("a", "AI Memories"), boardInfo("b", "Work Memories")]);
+    const err = await resolveMemories(catalog).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AmbiguousMemoriesCollectionError);
+    expect((err as Error).message).toContain('"AI Memories" (memories_id a)');
+    expect((err as Error).message).toContain('"Work Memories" (memories_id b)');
     expect(catalog.opened).toEqual([]);
   });
 });

@@ -11,7 +11,7 @@ interface KindEmptyProps {
   onSheetReady: (kind: CollectionKind, id: string) => void;
 }
 
-const LABEL: Record<CollectionKind, string> = { board: "Todos", notes: "Notes" };
+const LABEL: Record<CollectionKind, string> = { board: "Todos", notes: "Notes", memories: "AI Memories" };
 
 /**
  * The empty tab IS the setup (design 9b): no separate screen. When the
@@ -98,11 +98,17 @@ export function KindEmpty({ token, kind, extras, onSheetReady }: KindEmptyProps)
   );
 }
 
-/** Google-Sheets-style tile; notes get the warm-paper variant. */
+/** Google-Sheets-style tile; notes get the warm-paper variant, memories the accent one. */
 function SheetGlyph({ kind, small }: { kind: CollectionKind; small?: boolean }) {
   const size = small ? 20 : 44;
-  const fill = kind === "notes" ? "var(--warn)" : "var(--status-done)";
-  const lines = kind === "notes" ? "M5.5 7h9M5.5 10h9M5.5 13h5.5" : "M5.5 7h9M5.5 10h9M5.5 13h9M8.5 7v8.5";
+  const fill =
+    kind === "memories" ? "var(--accent)" : kind === "notes" ? "var(--warn)" : "var(--status-done)";
+  const lines =
+    kind === "memories"
+      ? "M5.5 7h9M5.5 10h6.5M5.5 13h9"
+      : kind === "notes"
+        ? "M5.5 7h9M5.5 10h9M5.5 13h5.5"
+        : "M5.5 7h9M5.5 10h9M5.5 13h9M8.5 7v8.5";
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true" className="sheet-glyph">
       <rect x="1" y="1" width="18" height="18" rx="4" fill={fill} />

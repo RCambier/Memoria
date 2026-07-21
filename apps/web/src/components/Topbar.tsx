@@ -8,10 +8,11 @@ import { Logo } from "./Logo.js";
 /** Sync status shape shared by the board and notes views. */
 type ViewStatus = "loading" | "ready" | "malformed" | "error";
 
-/** The two fixed tabs — the app manages exactly one sheet of each kind. */
+/** The fixed tabs — the app manages exactly one sheet of each kind. */
 const KIND_TABS: { kind: CollectionKind; label: string }[] = [
   { kind: "board", label: "Todos" },
   { kind: "notes", label: "Notes" },
+  { kind: "memories", label: "AI Memories" },
 ];
 
 interface TopbarProps {

@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as board from "@memoria/sheet-core";
-import { MAX_CELL_CHARS, STATUSES, type Note, type Task } from "@memoria/sheet-core";
+import { MAX_CELL_CHARS, STATUSES, type Memory, type Note, type Task } from "@memoria/sheet-core";
 import { z } from "zod";
-import { resolveBoard, resolveNotes, type MemoriaCatalog } from "./catalog.js";
+import { resolveBoard, resolveMemories, resolveNotes, type MemoriaCatalog } from "./catalog.js";
 
 const statusSchema = z.enum(STATUSES);
 
@@ -57,12 +57,38 @@ const notesIdSchema = z
       "the account has exactly one notes collection.",
   );
 
+const memoriesIdSchema = z
+  .string()
+  .min(1)
+  .optional()
+  .describe(
+    "Which AI Memories collection to operate on — an id from list_memory_collections. Optional " +
+      "when the account has exactly one memories collection.",
+  );
+
+const memoryTagsSchema = z
+  .array(
+    z
+      .string()
+      .min(1)
+      .regex(/^[^,]+$/, "tag names can't contain commas"),
+  )
+  .optional()
+  .describe(
+    'Labels categorizing the memory (e.g. "family", "preferences", "work"); replaces the ' +
+      "existing set when provided.",
+  );
+
 function taskText(task: Task): string {
   return JSON.stringify(task, null, 2);
 }
 
 function noteText(note: Note): string {
   return JSON.stringify(note, null, 2);
+}
+
+function memoryText(memory: Memory): string {
+  return JSON.stringify(memory, null, 2);
 }
 
 /** Rejects a call that sets both scheduling fields at once — they're mutually exclusive. */
@@ -318,6 +344,105 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
         const client = await resolveNotes(catalog, notes_id);
         await board.deleteNote(client, id);
         return { content: [{ type: "text", text: `Deleted note ${id}.` }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    "list_memory_collections",
+    "List the account's AI Memories collections (id, name, last modified; newest first). An AI " +
+      "Memories collection stores the facts and memories an AI gathers about its user over time " +
+      "— free-text markdown entries with tags, separate from boards and notes. Pass a " +
+      "collection's id as memories_id to the memory tools; with exactly one collection, " +
+      "memories_id can be omitted.",
+    {},
+    async () => {
+      try {
+        const collections = await catalog.listMemoriesCollections();
+        return { content: [{ type: "text", text: JSON.stringify(collections, null, 2) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    "list_memories",
+    "List every memory in an AI Memories collection, most recently edited first. Each memory " +
+      "has a title, a markdown body, and tags. Check here before adding a memory — update the " +
+      "existing entry when a fact changes rather than recording it twice.",
+    { memories_id: memoriesIdSchema },
+    async ({ memories_id }) => {
+      try {
+        const client = await resolveMemories(catalog, memories_id);
+        const memories = await board.listMemories(client);
+        return { content: [{ type: "text", text: JSON.stringify(memories, null, 2) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    "add_memory",
+    "Record a new memory — a fact worth remembering about the user (preferences, people, " +
+      "context, decisions). Give it a short title, a markdown body, and tags to categorize. " +
+      "Memories created this way are tagged source=agent.",
+    {
+      memories_id: memoriesIdSchema,
+      title: z.string().min(1, "title is required").max(MAX_CELL_CHARS),
+      body: z.string().max(MAX_CELL_CHARS).optional().describe("Markdown body of the memory."),
+      tags: memoryTagsSchema,
+    },
+    async ({ memories_id, title, body, tags }) => {
+      try {
+        const client = await resolveMemories(catalog, memories_id);
+        const memory = await board.addMemory(client, { title, body, tags }, "agent");
+        return { content: [{ type: "text", text: memoryText(memory) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    "update_memory",
+    "Edit a memory's title, markdown body, and/or tags. Fields you omit are left unchanged; " +
+      "the body and tags you pass replace the existing ones. Get the id from list_memories.",
+    {
+      memories_id: memoriesIdSchema,
+      id: z.string().min(1),
+      title: z.string().min(1).max(MAX_CELL_CHARS).optional(),
+      body: z
+        .string()
+        .max(MAX_CELL_CHARS)
+        .optional()
+        .describe("New markdown body; replaces the existing one."),
+      tags: memoryTagsSchema,
+    },
+    async ({ memories_id, id, title, body, tags }) => {
+      try {
+        const client = await resolveMemories(catalog, memories_id);
+        const memory = await board.updateMemory(client, id, { title, body, tags });
+        return { content: [{ type: "text", text: memoryText(memory) }] };
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.tool(
+    "delete_memory",
+    "Permanently delete a single memory row. There is no undo tool — use Google Sheets version " +
+      "history to recover if needed.",
+    { memories_id: memoriesIdSchema, id: z.string().min(1) },
+    async ({ memories_id, id }) => {
+      try {
+        const client = await resolveMemories(catalog, memories_id);
+        await board.deleteMemory(client, id);
+        return { content: [{ type: "text", text: `Deleted memory ${id}.` }] };
       } catch (err) {
         return errorResult(err);
       }

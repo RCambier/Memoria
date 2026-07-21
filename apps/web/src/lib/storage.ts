@@ -1,4 +1,4 @@
-import type { Note, NotePendingOp, PendingOp, Task } from "@memoria/sheet-core";
+import type { Memory, MemoryPendingOp, Note, NotePendingOp, PendingOp, Task } from "@memoria/sheet-core";
 
 /** Pre-simplification keys: one cached sheet + its kind. Read once as a migration source. */
 const LEGACY_SPREADSHEET_ID_KEY = "todos:spreadsheetId";
@@ -10,9 +10,11 @@ const OUTBOX_KEY_PREFIX = "todos:outbox:";
 const CALENDAR_MIRROR_KEY = "todos:calendarMirror";
 const NOTES_REPLICA_KEY_PREFIX = "todos:notes-replica:";
 const NOTES_OUTBOX_KEY_PREFIX = "todos:notes-outbox:";
+const MEMORIES_REPLICA_KEY_PREFIX = "todos:memories-replica:";
+const MEMORIES_OUTBOX_KEY_PREFIX = "todos:memories-outbox:";
 
-/** The two sheet kinds the app manages — one connected sheet of each. */
-type CachedCollectionKind = "board" | "notes";
+/** The three sheet kinds the app manages — one connected sheet of each. */
+type CachedCollectionKind = "board" | "notes" | "memories";
 
 /** Minimal subset of the `Storage` interface, so tests can inject a fake. */
 export interface KeyValueStore {
@@ -58,10 +60,10 @@ export function clearConnectedSheetId(kind: CachedCollectionKind, store: KeyValu
   }
 }
 
-/** Which of the two views (Todos / Notes) was active last — decides what boots. */
+/** Which of the views (Todos / Notes / AI Memories) was active last — decides what boots. */
 export function getActiveKind(store: KeyValueStore = localStorage): CachedCollectionKind {
   const kind = store.getItem(ACTIVE_KIND_KEY) ?? store.getItem(LEGACY_COLLECTION_KIND_KEY);
-  return kind === "notes" ? "notes" : "board";
+  return kind === "notes" ? "notes" : kind === "memories" ? "memories" : "board";
 }
 
 export function setActiveKind(kind: CachedCollectionKind, store: KeyValueStore = localStorage): void {
@@ -174,4 +176,44 @@ export function writeNotesOutbox(
   store: KeyValueStore = localStorage,
 ): void {
   writeJson(store, NOTES_OUTBOX_KEY_PREFIX + spreadsheetId, ops);
+}
+
+/** The AI Memories twin of the replica/outbox pair, one per memories spreadsheet. */
+
+export interface PersistedMemoriesReplica {
+  memories: Memory[];
+  /** ISO timestamp of the fetch that produced this snapshot. */
+  fetchedAt: string;
+}
+
+export function readMemoriesReplica(
+  spreadsheetId: string,
+  store: KeyValueStore = localStorage,
+): PersistedMemoriesReplica | null {
+  const replica = readJson<PersistedMemoriesReplica>(store, MEMORIES_REPLICA_KEY_PREFIX + spreadsheetId);
+  return replica && Array.isArray(replica.memories) ? replica : null;
+}
+
+export function writeMemoriesReplica(
+  spreadsheetId: string,
+  replica: PersistedMemoriesReplica,
+  store: KeyValueStore = localStorage,
+): void {
+  writeJson(store, MEMORIES_REPLICA_KEY_PREFIX + spreadsheetId, replica);
+}
+
+export function readMemoriesOutbox(
+  spreadsheetId: string,
+  store: KeyValueStore = localStorage,
+): MemoryPendingOp[] {
+  const ops = readJson<MemoryPendingOp[]>(store, MEMORIES_OUTBOX_KEY_PREFIX + spreadsheetId);
+  return Array.isArray(ops) ? ops : [];
+}
+
+export function writeMemoriesOutbox(
+  spreadsheetId: string,
+  ops: MemoryPendingOp[],
+  store: KeyValueStore = localStorage,
+): void {
+  writeJson(store, MEMORIES_OUTBOX_KEY_PREFIX + spreadsheetId, ops);
 }
