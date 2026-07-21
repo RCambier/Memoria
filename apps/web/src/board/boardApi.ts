@@ -76,8 +76,10 @@ export function relocateTask(
   id: string,
   status: Status,
   sortOrder: number,
+  doneStatus: Status = "done",
+  blockedStatus: Status | null = null,
 ): Promise<Task> {
-  return moveTask(store(token, spreadsheetId), id, status, sortOrder);
+  return moveTask(store(token, spreadsheetId), id, status, sortOrder, doneStatus, blockedStatus);
 }
 
 export function removeTask(token: string, spreadsheetId: string, id: string): Promise<void> {

@@ -186,7 +186,9 @@ export async function updateTask(
  * the top of the destination column.
  *
  * Recurrence: completing a `yearly` task that carries a date re-dates it one
- * year ahead and leaves it in its column (see `resolveMove` in schedule.ts).
+ * year ahead — a due-dated one stays in its column, one recurring on a
+ * blocked-until date goes (back) to `blockedStatus` when the board has one
+ * (see `resolveMove` in schedule.ts).
  */
 export async function moveTask(
   store: SheetStore,
@@ -194,15 +196,27 @@ export async function moveTask(
   status: Status,
   sortOrder?: number,
   doneStatus: Status = "done",
+  blockedStatus: Status | null = null,
 ): Promise<Task> {
   const { tasks, rawRows } = await readValidTasks(store);
   const current = tasks.find((t) => t.id === id);
   if (!current) throw new TaskNotFoundError(id);
 
   const now = new Date();
-  const { redated } = resolveMove(current, status, now.toISOString().slice(0, 10), doneStatus);
+  const { redated, status: redatedStatus } = resolveMove(
+    current,
+    status,
+    now.toISOString().slice(0, 10),
+    doneStatus,
+    blockedStatus,
+  );
   const updated: Task = redated
-    ? { ...current, ...mergeSchedule(current, redated), updatedAt: now.toISOString() }
+    ? {
+        ...current,
+        ...mergeSchedule(current, redated),
+        status: redatedStatus ?? current.status,
+        updatedAt: now.toISOString(),
+      }
     : {
         ...current,
         status,
@@ -220,8 +234,9 @@ export async function completeTask(
   store: SheetStore,
   id: string,
   doneStatus: Status = "done",
+  blockedStatus: Status | null = null,
 ): Promise<Task> {
-  return moveTask(store, id, doneStatus, undefined, doneStatus);
+  return moveTask(store, id, doneStatus, undefined, doneStatus, blockedStatus);
 }
 
 export async function deleteTask(store: SheetStore, id: string): Promise<void> {

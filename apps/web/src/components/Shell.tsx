@@ -1,11 +1,12 @@
-import { blockedColumnId, columnIds, doneColumnId } from "@memoria/sheet-core";
-import { useMemo, useState } from "react";
+import { blockedColumnId, columnIds, doneColumnId, releaseColumnId } from "@memoria/sheet-core";
+import { useEffect, useMemo, useState } from "react";
 import type { Collection, CollectionKind } from "../api/drive.js";
 import type { UserProfile } from "../auth/googleAuth.js";
 import { beginTasksConsent } from "../auth/session.js";
 import { useBoard } from "../board/useBoard.js";
 import { useColumns } from "../board/useColumns.js";
 import { useTasksMirror } from "../calendar/useTasksMirror.js";
+import { isBlockLifted } from "../lib/dates.js";
 import { useBackClose } from "../lib/useBackClose.js";
 import { useMemories } from "../memories/useMemories.js";
 import { uploadMemoryAttachment } from "../notes/attachments.js";
@@ -122,6 +123,7 @@ function BoardShell({
   const columnOrder = useMemo(() => columnIds(columns), [columns]);
   const doneStatus = doneColumnId(columns);
   const blockedStatus = blockedColumnId(columns);
+  const releaseStatus = releaseColumnId(columns);
   const {
     state,
     lastSyncedAt,
@@ -132,7 +134,7 @@ function BoardShell({
     updateTask,
     moveTask,
     deleteTask,
-  } = useBoard(token, spreadsheetId, columnOrder, doneStatus ?? "done");
+  } = useBoard(token, spreadsheetId, columnOrder, doneStatus ?? "done", blockedStatus);
   const [settingsOpen, setSettingsOpen] = useState<SettingsSection | null>(null);
   useBackClose(settingsOpen !== null, () => setSettingsOpen(null));
   // The toggle lives in the Settings sheet in Drive, not localStorage —
@@ -141,6 +143,19 @@ function BoardShell({
 
   const readOnly = state.status !== "ready";
   const tasks = state.status === "ready" ? state.tasks : [];
+
+  // A date block that has passed releases the task on its own: it leaves the
+  // Blocked column for the release column ("In progress" on the stock
+  // layouts) — same landing spot as clearing a block by hand. Runs against
+  // the live projection, so a lifted task moves on load and the moment its
+  // date passes mid-session (each poll re-runs it); once moved it no longer
+  // matches, so a re-block or manual drag isn't fought beyond that.
+  useEffect(() => {
+    if (readOnly || !blockedStatus || !releaseStatus) return;
+    for (const t of tasks) {
+      if (t.status === blockedStatus && isBlockLifted(t)) void moveTask(t.id, releaseStatus, 0);
+    }
+  }, [tasks, readOnly, blockedStatus, releaseStatus, moveTask]);
 
   const mirrorStatus = useTasksMirror({
     token,
@@ -214,15 +229,16 @@ function BoardShell({
           void updateTask(id, patch);
           // The Blocked column (if designated) tracks the schedule: gaining a
           // blocked-until moves the task there; losing it (cleared, or swapped
-          // for a due date) releases it to the first column. Done tasks are
-          // left alone. With no Blocked column, nothing auto-moves.
+          // for a due date) releases it — to the same release column a passed
+          // date block uses. Done tasks are left alone. With no Blocked
+          // column, nothing auto-moves.
           if (!blockedStatus) return;
           const current = tasks.find((t) => t.id === id);
           if (!current || (doneStatus && current.status === doneStatus)) return;
           if (patch.blockedUntil && current.status !== blockedStatus) {
             void moveTask(id, blockedStatus, 0);
           } else if (patch.blockedUntil === "" && current.status === blockedStatus) {
-            void moveTask(id, columnOrder[0] ?? current.status, 0);
+            void moveTask(id, releaseStatus ?? columnOrder[0] ?? current.status, 0);
           }
         }}
         onDelete={(id) => void deleteTask(id)}

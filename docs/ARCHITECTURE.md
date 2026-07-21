@@ -163,7 +163,9 @@ Dependency-free TypeScript. The single definition of what a valid sheet is
   columns live in a `Columns` tab (`id, label, sort_order, done, blocked,
   hidden`). Roles are optional per-column flags — `done` (the ✓ / agents'
   `complete_task` land here, and the calendar mirror treats it as finished),
-  `blocked` (a task gaining a blocked-until date auto-moves here), and
+  `blocked` (a task gaining a blocked-until date auto-moves here; once the
+  date passes, the web app releases it to the release column —
+  `releaseColumnId`, the working column just left of Blocked), and
   `hidden` (folded away behind the board's right-edge rail). `DEFAULT_NEW_COLUMNS`
   (Backlog / In progress / Done) seeds brand-new boards; `LEGACY_COLUMNS`
   (the historical six) is the migration target for boards created before
@@ -429,7 +431,7 @@ One tab named `Tasks`. Row 1 is the header, frozen. Columns:
 | `due_date`   | string          | `YYYY-MM-DD` or empty; optional                                      |
 | `tags`       | string          | comma-separated labels; optional (so tag names can't contain commas) |
 | `blocked_until` | string       | `YYYY-MM-DD` **or** free-text event (e.g. `Trip done`); empty = not blocked |
-| `recurs`     | enum            | `yearly` or empty. Completing a yearly task advances its date one year (into the future) and leaves it in its column, instead of finishing it |
+| `recurs`     | enum            | `yearly` or empty. Completing a yearly task advances its date one year (into the future) instead of finishing it — a due-dated task stays in its column, one recurring on a blocked-until date returns to the board's `blocked` column |
 
 Validation rules (enforced identically by both clients via `sheet-core`):
 header row must match exactly; `id`, `title`, `status` required;
@@ -467,9 +469,13 @@ legacy set for an un-migrated board) but never writes them. Reads/parses via
 task data, so a bad row is skipped rather than making the board read-only.
 The behaviors bound to roles: the card ✓ and `complete_task` move a task to
 the `done` column; giving a task a blocked-until date auto-moves it to the
-`blocked` column (and clearing it releases the task); `hidden` columns fold
-away behind the board's right-edge rail. With a role unset, its behavior
-simply doesn't fire. Column edits (rename / reorder / add / remove / roles)
+`blocked` column, and the task is released when the block goes away — a
+date block that passes releases it automatically (the web app moves it on
+load and on every poll), a cleared one releases it on the edit. Both
+release to the same place: `releaseColumnId`, the nearest visible working
+column left of Blocked ("In progress" on the stock layouts). `hidden`
+columns fold away behind the board's right-edge rail. With a role unset,
+its behavior simply doesn't fire. Column edits (rename / reorder / add / remove / roles)
 happen in the web app's settings and are a whole-tab overwrite — the only
 place the app writes a whole grid, justified because reordering inherently
 rewrites the small config tab; task rows are still only ever touched one at

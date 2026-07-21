@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as board from "@memoria/sheet-core";
 import {
+  blockedColumnId,
   columnIds,
   doneColumnId,
   MAX_CELL_CHARS,
@@ -296,7 +297,14 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
       try {
         const { store, columns } = await resolveBoardWithColumns(catalog, board_id);
         assertKnownStatus(status, columns);
-        const task = await board.moveTask(store, id, status, undefined, doneColumnId(columns) ?? "done");
+        const task = await board.moveTask(
+          store,
+          id,
+          status,
+          undefined,
+          doneColumnId(columns) ?? "done",
+          blockedColumnId(columns),
+        );
         return { content: [{ type: "text", text: taskText(task) }] };
       } catch (err) {
         return errorResult(err);
@@ -320,7 +328,7 @@ export function registerTools(server: McpServer, catalog: MemoriaCatalog): void 
               "column as Done, or use move_task with a specific column id.",
           );
         }
-        const task = await board.completeTask(store, id, done);
+        const task = await board.completeTask(store, id, done, blockedColumnId(columns));
         return { content: [{ type: "text", text: taskText(task) }] };
       } catch (err) {
         return errorResult(err);

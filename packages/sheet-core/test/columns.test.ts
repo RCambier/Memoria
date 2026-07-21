@@ -10,8 +10,10 @@ import {
   LEGACY_COLUMNS,
   orderColumns,
   parseColumnsSheet,
+  releaseColumnId,
   slugifyColumnId,
   visibleColumns,
+  type BoardColumn,
 } from "../src/columns.js";
 
 describe("parseColumnsSheet", () => {
@@ -73,6 +75,40 @@ describe("columnsToRows round-trips", () => {
     expect(doneColumnId(LEGACY_COLUMNS)).toBe("done");
     expect(blockedColumnId(LEGACY_COLUMNS)).toBe("blocked");
     expect(hiddenColumns(LEGACY_COLUMNS).map((c) => c.id)).toEqual(["admin_renewals", "health_checks"]);
+  });
+});
+
+describe("releaseColumnId", () => {
+  function col(id: string, sortOrder: number, roles: Partial<BoardColumn> = {}): BoardColumn {
+    return { id, label: id, sortOrder, done: false, blocked: false, hidden: false, ...roles };
+  }
+
+  it("is the working column just left of Blocked on the legacy layout", () => {
+    expect(releaseColumnId(LEGACY_COLUMNS)).toBe("in_progress");
+  });
+
+  it("is null without a blocked column", () => {
+    expect(releaseColumnId(DEFAULT_NEW_COLUMNS)).toBe(null);
+  });
+
+  it("skips done and hidden columns when scanning left", () => {
+    const columns = [
+      col("a", 0),
+      col("hid", 1, { hidden: true }),
+      col("fin", 2, { done: true }),
+      col("blocked", 3, { blocked: true }),
+    ];
+    expect(releaseColumnId(columns)).toBe("a");
+  });
+
+  it("falls back to the nearest eligible column right of Blocked", () => {
+    const columns = [col("blocked", 0, { blocked: true }), col("next", 1), col("later", 2)];
+    expect(releaseColumnId(columns)).toBe("next");
+  });
+
+  it("is null when no column is eligible", () => {
+    const columns = [col("blocked", 0, { blocked: true }), col("done", 1, { done: true })];
+    expect(releaseColumnId(columns)).toBe(null);
   });
 });
 

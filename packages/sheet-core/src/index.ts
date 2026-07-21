@@ -28,6 +28,7 @@ export {
   columnIds,
   doneColumnId,
   blockedColumnId,
+  releaseColumnId,
   visibleColumns,
   hiddenColumns,
   slugifyColumnId,

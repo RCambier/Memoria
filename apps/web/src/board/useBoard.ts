@@ -98,6 +98,8 @@ export function useBoard(
   columnOrder: readonly string[] = STATUSES,
   /** Which column counts as "done" (the recurrence trigger). */
   doneStatus: string = "done",
+  /** The board's blocked-role column, if any — where a re-dated blocked-until sends the task. */
+  blockedStatus: string | null = null,
 ): UseBoardResult {
   const [local, setLocal] = useState<LocalBoard>(() => loadLocal(spreadsheetId));
   const [malformed, setMalformed] = useState<SheetError | null>(null);
@@ -122,6 +124,10 @@ export function useBoard(
   tokenRef.current = token;
   const malformedRef = useRef(malformed);
   malformedRef.current = malformed;
+  const doneStatusRef = useRef(doneStatus);
+  doneStatusRef.current = doneStatus;
+  const blockedStatusRef = useRef(blockedStatus);
+  blockedStatusRef.current = blockedStatus;
 
   const pollInFlight = useRef(false);
   const flushing = useRef(false);
@@ -140,9 +146,9 @@ export function useBoard(
   const projection = useMemo(
     () =>
       local.replica
-        ? boardOrder(applyPending(local.replica.tasks, local.outbox, doneStatus), columnOrder)
+        ? boardOrder(applyPending(local.replica.tasks, local.outbox, doneStatus, blockedStatus), columnOrder)
         : null,
-    [local, columnOrder, doneStatus],
+    [local, columnOrder, doneStatus, blockedStatus],
   );
   const projectionRef = useRef(projection);
   projectionRef.current = projection;
@@ -176,7 +182,15 @@ export function useBoard(
           } else if (op.kind === "edit") {
             await boardApi.editTask(t, boardId, op.id, op.patch);
           } else if (op.kind === "move") {
-            await boardApi.relocateTask(t, boardId, op.id, op.status, op.sortOrder);
+            await boardApi.relocateTask(
+              t,
+              boardId,
+              op.id,
+              op.status,
+              op.sortOrder,
+              doneStatusRef.current,
+              blockedStatusRef.current,
+            );
           } else {
             await boardApi.removeTask(t, boardId, op.id);
           }
@@ -211,7 +225,10 @@ export function useBoard(
         const cur = localRef.current;
         const rest = cur.outbox.slice(1);
         const replica = cur.replica
-          ? { ...cur.replica, tasks: applyPending(cur.replica.tasks, [op]) }
+          ? {
+              ...cur.replica,
+              tasks: applyPending(cur.replica.tasks, [op], doneStatusRef.current, blockedStatusRef.current),
+            }
           : cur.replica;
         localRef.current = { ...cur, outbox: rest, replica };
         setLocal((l) => (l.boardId === boardId ? { ...l, outbox: rest, replica } : l));

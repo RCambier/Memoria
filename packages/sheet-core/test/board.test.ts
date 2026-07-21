@@ -103,6 +103,16 @@ describe("yearly recurrence on complete", () => {
     expect(task.blockedUntil).toBe(`${new Date().getFullYear() + 2}-06-15`);
   });
 
+  it("a re-dated blocked-until returns the task to the board's blocked column", async () => {
+    // The lifted block released it to in_progress; completing it there
+    // re-blocks it until next year rather than leaving it mid-board.
+    const past = `${new Date().getFullYear() - 1}-06-15`;
+    const store = new FakeSheetStore([[...row("a", "Task a", "in_progress", 1), "", "", past, "yearly"]]);
+    const task = await board.completeTask(store, "a", "done", "blocked");
+    expect(task.status).toBe("blocked");
+    expect(task.blockedUntil > new Date().toISOString().slice(0, 10)).toBe(true);
+  });
+
   it("a yearly task with no date completes normally", async () => {
     const store = new FakeSheetStore([[...row("a", "Task a", "backlog", 1), "", "", "", "yearly"]]);
     const task = await board.completeTask(store, "a");

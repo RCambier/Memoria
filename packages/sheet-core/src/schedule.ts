@@ -54,8 +54,12 @@ export function nextYearlyDate(date: string, today: string): string {
  * disagree:
  *
  * Completing a `yearly` task that carries a date doesn't finish it — it
- * advances that date one year (into the future) and leaves the task in its
- * column. Everything else is a plain move. A yearly task with no date (or a
+ * advances that date one year (into the future). A due-dated task stays in
+ * its column; one recurring on a blocked-until date goes (back) to the
+ * board's blocked column, if one is designated — it's waiting on next
+ * year's date again, even when it was completed from elsewhere (a lifted
+ * block releases the task to a working column; see the web app's Shell).
+ * Everything else is a plain move. A yearly task with no date (or a
  * blocked-until naming an event) has nothing to recur on and completes
  * normally.
  */
@@ -65,11 +69,16 @@ export function resolveMove(
   today: string,
   /** Which column counts as "done" for this board (the recurrence trigger). */
   doneStatus: string = "done",
-): { redated: Partial<Schedule> | null } {
+  /** The board's blocked-role column, if any — where a re-dated blocked-until sends the task. */
+  blockedStatus: string | null = null,
+): { redated: Partial<Schedule> | null; status?: string } {
   if (status !== doneStatus || task.recurs !== "yearly") return { redated: null };
   if (task.dueDate !== "") return { redated: { dueDate: nextYearlyDate(task.dueDate, today) } };
   if (DATE_ONLY_RE.test(task.blockedUntil)) {
-    return { redated: { blockedUntil: nextYearlyDate(task.blockedUntil, today) } };
+    return {
+      redated: { blockedUntil: nextYearlyDate(task.blockedUntil, today) },
+      ...(blockedStatus !== null ? { status: blockedStatus } : {}),
+    };
   }
   return { redated: null };
 }

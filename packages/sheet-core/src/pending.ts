@@ -45,6 +45,8 @@ export function applyPending(
   ops: readonly PendingOp[],
   /** Which column counts as "done" (the recurrence trigger) for this board. */
   doneStatus: string = "done",
+  /** The board's blocked-role column, if any — where a re-dated blocked-until sends the task. */
+  blockedStatus: string | null = null,
 ): Task[] {
   const result = tasks.map((t) => ({ ...t }));
   for (const op of ops) {
@@ -70,10 +72,12 @@ export function applyPending(
         const t = result.find((x) => x.id === op.id);
         if (!t) break;
         // Same recurrence rule as board.moveTask: completing a yearly task
-        // re-dates it in place, so the projection matches the flushed write.
-        const { redated } = resolveMove(t, op.status, op.at.slice(0, 10), doneStatus);
+        // re-dates it (and a blocked-until one returns to the blocked
+        // column), so the projection matches the flushed write.
+        const { redated, status } = resolveMove(t, op.status, op.at.slice(0, 10), doneStatus, blockedStatus);
         if (redated) {
           Object.assign(t, mergeSchedule(t, redated));
+          if (status !== undefined) t.status = status;
         } else {
           t.status = op.status;
           t.sortOrder = op.sortOrder;

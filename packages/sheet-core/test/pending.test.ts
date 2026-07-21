@@ -78,6 +78,18 @@ describe("applyPending", () => {
     expect(out[0]!.dueDate).toBe("2027-03-01"); // AT is 2026-07-19 → next 1 Mar is 2027
   });
 
+  it("completing a yearly blocked-until task returns it to the blocked column, like the real write will", () => {
+    const yearly = task("a", { recurs: "yearly", blockedUntil: "2026-06-15", status: "in_progress" });
+    const out = applyPending(
+      [yearly],
+      [{ kind: "move", id: "a", status: "done", sortOrder: 0, at: AT }],
+      "done",
+      "blocked",
+    );
+    expect(out[0]!.status).toBe("blocked"); // re-blocked until next year, not left mid-board
+    expect(out[0]!.blockedUntil).toBe("2027-06-15");
+  });
+
   it("removes a deleted task", () => {
     const out = applyPending([task("a"), task("b")], [{ kind: "delete", id: "a" }]);
     expect(out.map((t) => t.id)).toEqual(["b"]);

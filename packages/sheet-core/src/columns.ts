@@ -150,6 +150,23 @@ export function blockedColumnId(columns: readonly BoardColumn[]): string | null 
   return columns.find((c) => c.blocked)?.id ?? null;
 }
 
+/**
+ * The column a task released from the blocked column lands in — when its
+ * blocked-until date passes, or the block is cleared by hand. The nearest
+ * visible working column left of Blocked (on the stock layouts that's
+ * "In progress"), falling back to the nearest one right of it. `null` when
+ * the board has no blocked column or no eligible column to release into.
+ */
+export function releaseColumnId(columns: readonly BoardColumn[]): string | null {
+  const ordered = orderColumns(columns);
+  const blockedIdx = ordered.findIndex((c) => c.blocked);
+  if (blockedIdx === -1) return null;
+  const eligible = (c: BoardColumn) => !c.blocked && !c.done && !c.hidden;
+  for (let i = blockedIdx - 1; i >= 0; i--) if (eligible(ordered[i]!)) return ordered[i]!.id;
+  for (let i = blockedIdx + 1; i < ordered.length; i++) if (eligible(ordered[i]!)) return ordered[i]!.id;
+  return null;
+}
+
 /** The columns shown by default (not flagged hidden), in display order. */
 export function visibleColumns(columns: readonly BoardColumn[]): BoardColumn[] {
   return orderColumns(columns).filter((c) => !c.hidden);
