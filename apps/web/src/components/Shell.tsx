@@ -124,7 +124,7 @@ function BoardShell({
   const readOnly = state.status !== "ready";
   const tasks = state.status === "ready" ? state.tasks : [];
 
-  useTasksMirror({
+  const mirrorStatus = useTasksMirror({
     token,
     boardId: spreadsheetId,
     tasks: state.status === "ready" ? state.tasks : null,
@@ -191,7 +191,12 @@ function BoardShell({
           onClose={() => setSettingsOpen(null)}
           calendarMirror={
             calendarMirrorAvailable
-              ? { enabled: mirrorEnabled, hasScope: hasTasksScope, onToggle: handleMirrorToggle }
+              ? {
+                  enabled: mirrorEnabled,
+                  hasScope: hasTasksScope,
+                  status: mirrorStatus,
+                  onToggle: handleMirrorToggle,
+                }
               : null
           }
         />

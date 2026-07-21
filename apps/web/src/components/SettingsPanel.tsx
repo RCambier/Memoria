@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { MirrorStatus } from "../calendar/useTasksMirror.js";
 import { buildClaudeCodeCliSnippet, buildConnectorUrl } from "../lib/mcpSnippet.js";
 import { AgentMark } from "./AgentMark.js";
 
@@ -6,6 +7,8 @@ import { AgentMark } from "./AgentMark.js";
 interface CalendarMirror {
   enabled: boolean;
   hasScope: boolean;
+  /** What the mirror is actually doing — so a failure is never silent. */
+  status: MirrorStatus;
   onToggle: () => void;
 }
 
@@ -141,6 +144,24 @@ function AgentsSection() {
   );
 }
 
+/** One-line summary of what the mirror is doing right now. */
+function mirrorSummary(mirror: CalendarMirror): string {
+  if (!mirror.enabled) return "Off";
+  if (!mirror.hasScope) return "Waiting for Google permission — toggle again to finish connecting";
+  switch (mirror.status.state) {
+    case "syncing":
+      return "Syncing with Google Tasks…";
+    case "synced":
+      return mirror.status.mirrored === 0
+        ? "On — but no task has a due date yet, so there's nothing to show in Calendar"
+        : `On — ${mirror.status.mirrored} dated task${mirror.status.mirrored === 1 ? "" : "s"} mirrored`;
+    case "error":
+      return "Google rejected the last sync";
+    default:
+      return "On — waiting for the first sync";
+  }
+}
+
 /** The one-way Google Tasks / Calendar mirror toggle. */
 function CalendarSection({ mirror }: { mirror: CalendarMirror | null }) {
   if (!mirror) {
@@ -158,18 +179,15 @@ function CalendarSection({ mirror }: { mirror: CalendarMirror | null }) {
     );
   }
 
-  const status = !mirror.enabled
-    ? "Off"
-    : mirror.hasScope
-      ? "On — tasks with a due date appear in Google Calendar"
-      : "Waiting for Google permission — toggle again to finish connecting";
+  const failed = mirror.enabled && mirror.hasScope && mirror.status.state === "error";
 
   return (
     <section className="settings-body" aria-label="Google Calendar sync">
       <p className="settings-intro">
         Mirror tasks that have a due date into a &ldquo;Memoria&rdquo; Google Tasks list — they show up in
-        Google Calendar on their due date. One-way: the board stays the source of truth; edits in Google are
-        overwritten on the next sync.
+        Google Calendar on their due date. Only tasks with a <strong>due date</strong> that aren&rsquo;t done
+        are mirrored. One-way: the board stays the source of truth; edits in Google are overwritten on the
+        next sync.
       </p>
       <div className="mirror-row">
         <button
@@ -181,8 +199,18 @@ function CalendarSection({ mirror }: { mirror: CalendarMirror | null }) {
         >
           <span className="knob" />
         </button>
-        <span className="mirror-status">{status}</span>
+        <span className="mirror-status">{mirrorSummary(mirror)}</span>
       </div>
+      {failed && mirror.status.state === "error" && (
+        <p className="mirror-error">
+          {mirror.status.message}
+          <br />
+          <span className="mirror-error-hint">
+            If this mentions the Tasks API being disabled, enable “Google Tasks API” for your project in the
+            Google Cloud console, then reload.
+          </span>
+        </p>
+      )}
     </section>
   );
 }

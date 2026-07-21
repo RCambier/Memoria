@@ -1,5 +1,5 @@
 import type { Task } from "@memoria/sheet-core";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { applyMirrorOp, ensureMemoriaList, listMirrorTasks } from "./gtasksApi.js";
 import { planMirror } from "./mirrorDiff.js";
 
@@ -7,6 +7,17 @@ import { planMirror } from "./mirrorDiff.js";
 const IDLE_INTERVAL_MS = 5 * 60 * 1000;
 /** Back off this long after a failed attempt. */
 const RETRY_INTERVAL_MS = 60 * 1000;
+
+/**
+ * What the mirror is actually doing — surfaced in Settings. Without this a
+ * failure (revoked scope, Tasks API disabled in the Cloud project, network)
+ * was invisible: Settings said "On" while nothing ever reached Google.
+ */
+export type MirrorStatus =
+  | { state: "idle" }
+  | { state: "syncing" }
+  | { state: "synced"; at: number; mirrored: number }
+  | { state: "error"; message: string };
 
 /**
  * Runs the one-way Google Tasks mirror (see mirrorDiff.ts) from the board
@@ -21,8 +32,9 @@ export function useTasksMirror(opts: {
   /** The board's current (projected) tasks, or null while loading. */
   tasks: readonly Task[] | null;
   active: boolean;
-}): void {
+}): MirrorStatus {
   const { token, boardId, tasks, active } = opts;
+  const [status, setStatus] = useState<MirrorStatus>({ state: "idle" });
 
   // Everything the mirror renders from, in one comparable string.
   const fingerprint = useMemo(() => {
@@ -37,7 +49,7 @@ export function useTasksMirror(opts: {
   const running = useRef(false);
   const listIdRef = useRef<string | null>(null);
   const lastSynced = useRef<{ boardId: string; fingerprint: string; at: number } | null>(null);
-  const lastAttempt = useRef(0);
+  const lastFailureAt = useRef(0);
 
   useEffect(() => {
     if (!active || !token || !boardId || fingerprint === null || running.current) return;
@@ -46,10 +58,13 @@ export function useTasksMirror(opts: {
     const unchanged = synced?.boardId === boardId && synced.fingerprint === fingerprint;
     const now = Date.now();
     if (unchanged && now - (synced?.at ?? 0) < IDLE_INTERVAL_MS) return;
-    if (now - lastAttempt.current < RETRY_INTERVAL_MS && unchanged) return;
+    // Back off after a failure whether or not anything changed. Gating this on
+    // `unchanged` meant a failing mirror retried on every single render —
+    // `unchanged` is false precisely when the last attempt never succeeded.
+    if (now - lastFailureAt.current < RETRY_INTERVAL_MS) return;
 
     running.current = true;
-    lastAttempt.current = now;
+    setStatus({ state: "syncing" });
     void (async () => {
       try {
         listIdRef.current ??= await ensureMemoriaList(token);
@@ -57,12 +72,21 @@ export function useTasksMirror(opts: {
         const ops = planMirror(boardId, tasks ?? [], googleTasks);
         for (const op of ops) await applyMirrorOp(token, listIdRef.current, op);
         lastSynced.current = { boardId, fingerprint, at: Date.now() };
-      } catch {
-        // Offline, revoked scope, or a Google hiccup — the next window retries.
+        lastFailureAt.current = 0;
+        const mirrored = (tasks ?? []).filter((t) => t.dueDate !== "" && t.status !== "done").length;
+        setStatus({ state: "synced", at: Date.now(), mirrored });
+      } catch (err) {
+        // Offline, revoked scope, Tasks API disabled in the Cloud project, or a
+        // Google hiccup. Report it — a mirror that silently does nothing while
+        // Settings reads "On" is the worst possible failure mode.
+        lastFailureAt.current = Date.now();
         listIdRef.current = null;
+        setStatus({ state: "error", message: err instanceof Error ? err.message : String(err) });
       } finally {
         running.current = false;
       }
     })();
   }, [active, token, boardId, fingerprint, tasks]);
+
+  return status;
 }
