@@ -9,18 +9,46 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * without a database, and reject anything whose tag doesn't check out
  * (i.e. wasn't minted by this server).
  *
- * Only two redirect URIs are ever allowed, matching claude.ai's and
- * claude.com's MCP OAuth callback exactly (string equality, not a prefix or
- * suffix match — that's what keeps a lookalike domain like
- * `claude.ai.evil.example` or `notclaude.ai` from ever registering).
+ * Hosted clients use exact HTTPS callback allowlisting. Native MCP clients
+ * use OAuth's loopback redirect pattern: HTTP is permitted only on numeric
+ * loopback addresses with an explicit, client-chosen port. The full URI is
+ * still encoded into the signed client ID and checked for exact equality at
+ * `/authorize`, while PKCE binds the eventual token exchange to the client.
  */
 export const ALLOWED_REDIRECT_URIS: readonly string[] = [
   "https://claude.ai/api/mcp/auth_callback",
   "https://claude.com/api/mcp/auth_callback",
 ];
 
+const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "[::1]"]);
+
+/**
+ * Native OAuth clients bind a short-lived listener to a loopback address and
+ * let the OS select an available port. Restricting this exception to numeric
+ * loopback literals avoids DNS ambiguity while supporting Codex and other
+ * standards-compliant local MCP clients without a per-client allowlist.
+ */
+function isNativeLoopbackRedirectUri(redirectUri: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(redirectUri);
+  } catch {
+    return false;
+  }
+
+  return (
+    url.protocol === "http:" &&
+    LOOPBACK_HOSTNAMES.has(url.hostname) &&
+    url.port !== "" &&
+    url.username === "" &&
+    url.password === "" &&
+    url.search === "" &&
+    url.hash === ""
+  );
+}
+
 export function isAllowedRedirectUri(redirectUri: string): boolean {
-  return ALLOWED_REDIRECT_URIS.includes(redirectUri);
+  return ALLOWED_REDIRECT_URIS.includes(redirectUri) || isNativeLoopbackRedirectUri(redirectUri);
 }
 
 function tag(signingSecretHex: string, payloadB64: string): string {

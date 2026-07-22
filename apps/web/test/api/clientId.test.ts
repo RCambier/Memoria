@@ -18,6 +18,12 @@ describe("isAllowedRedirectUri", () => {
     expect(ALLOWED_REDIRECT_URIS).toHaveLength(2);
   });
 
+  it("allows native-client callbacks on IPv4 and IPv6 loopback ports", () => {
+    expect(isAllowedRedirectUri("http://127.0.0.1:49152/callback/codex-server-id")).toBe(true);
+    expect(isAllowedRedirectUri("http://127.0.0.1:53177/oauth/callback/another-client")).toBe(true);
+    expect(isAllowedRedirectUri("http://[::1]:49152/callback/codex-server-id")).toBe(true);
+  });
+
   it("rejects lookalike domains", () => {
     expect(isAllowedRedirectUri("https://claude.ai.evil.example/api/mcp/auth_callback")).toBe(false);
     expect(isAllowedRedirectUri("https://notclaude.ai/api/mcp/auth_callback")).toBe(false);
@@ -30,6 +36,17 @@ describe("isAllowedRedirectUri", () => {
     expect(isAllowedRedirectUri("https://claude.ai/api/mcp/auth_callback/")).toBe(false); // trailing slash
     expect(isAllowedRedirectUri("https://claude.ai/api/mcp/auth_callback?x=1")).toBe(false); // query string
     expect(isAllowedRedirectUri("https://claude.ai:443/api/mcp/auth_callback")).toBe(false); // explicit port
+  });
+
+  it("rejects non-loopback and ambiguous native-client callbacks", () => {
+    expect(isAllowedRedirectUri("http://localhost:49152/callback/client-id")).toBe(false);
+    expect(isAllowedRedirectUri("http://127.0.0.2:49152/callback/client-id")).toBe(false);
+    expect(isAllowedRedirectUri("http://127.0.0.1.evil.example:49152/callback/client-id")).toBe(false);
+    expect(isAllowedRedirectUri("https://127.0.0.1:49152/callback/client-id")).toBe(false);
+    expect(isAllowedRedirectUri("http://127.0.0.1/callback/client-id")).toBe(false);
+    expect(isAllowedRedirectUri("http://127.0.0.1:49152/callback/client-id?next=/evil")).toBe(false);
+    expect(isAllowedRedirectUri("http://127.0.0.1:49152/callback/client-id#fragment")).toBe(false);
+    expect(isAllowedRedirectUri("not a URI")).toBe(false);
   });
 });
 

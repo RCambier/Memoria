@@ -113,7 +113,9 @@ This one section powers two things:
    e.g. `https://your-app.vercel.app/api/oauth/callback` and
    `https://your-app.vercel.app/api/auth/callback` (the first serves MCP
    clients, the second the web app's own sign-in). Save, and copy the
-   client ID **and** client secret.
+   client ID **and** client secret. Local callbacks used by Codex and other
+   native MCP clients do **not** belong in Google Cloud: Google always returns
+   to your deployment, which then completes the client-specific redirect.
 
 2. In your Vercel project settings, add three environment variables:
    - `GOOGLE_OAUTH_CLIENT_ID` — from the client you just created,
@@ -144,9 +146,10 @@ board can be omitted everywhere.
 
   Then complete the OAuth prompt with `/mcp` in a session.
 
-- **Other MCP clients** (Codex, Claude Desktop, …): add it as a remote
-  MCP server (Streamable HTTP); the client's own OAuth flow handles
-  sign-in.
+- **Codex and other native MCP clients**: add it as a remote MCP server
+  (Streamable HTTP), leaving bearer-token and custom-header fields empty.
+  The client's OAuth flow opens a browser and returns to a short-lived local
+  callback; no additional Google Cloud redirect URI is required.
 
 Ask your agent to list, add, or move tasks — it's using the tools
 described in `docs/ARCHITECTURE.md`.

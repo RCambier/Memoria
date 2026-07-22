@@ -47,8 +47,8 @@ export async function POST(request: Request): Promise<Response> {
     return registrationError(
       400,
       "invalid_redirect_uri",
-      `"${badRedirectUri}" is not an allowed redirect URI. This connector only supports the ` +
-        "claude.ai and claude.com MCP OAuth callbacks.",
+      `"${badRedirectUri}" is not an allowed redirect URI. Use a supported hosted callback or ` +
+        "an HTTP callback on a numeric loopback address with an explicit port.",
     );
   }
 

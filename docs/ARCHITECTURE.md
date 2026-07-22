@@ -266,8 +266,10 @@ that proxies Google:
 
 - Dynamic Client Registration returns a `client_id` that _is_ the client's
   redirect URIs (base64url + HMAC tag), so `/authorize` can validate it
-  without storage. Redirect URIs are allowlisted to exactly the claude.ai
-  and claude.com MCP callbacks.
+  without storage. Hosted redirect URIs are allowlisted exactly; native MCP
+  clients may use HTTP only on numeric loopback addresses with an explicit
+  ephemeral port. The authorization request must still exactly match the
+  signed registration, and every flow requires PKCE.
 - `/api/oauth/authorize` validates the client and PKCE (S256 only), seals
   `{client redirect_uri, state, code_challenge, issued_at}` into an
   AES-256-GCM blob (key derived from `AUTH_SIGNING_SECRET`) passed as the

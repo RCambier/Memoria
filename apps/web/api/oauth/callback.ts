@@ -31,7 +31,7 @@ export function GET(request: Request): Response {
   if (!state || !isFresh(state.issuedAt)) {
     return plainTextError(
       400,
-      "This sign-in link is invalid or has expired. Go back to claude.ai and add the connector again.",
+      "This sign-in link is invalid or has expired. Go back to your MCP client and authenticate again.",
     );
   }
 
