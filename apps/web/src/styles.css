@@ -2413,14 +2413,24 @@ kbd {
     flex: 1;
     min-height: 120px;
   }
+  /* The bottom strip: a quiet schedule row (📎 · kind · date), then the
+     Cancel / Add pair as a full-width row — instead of the controls
+     wrapping wherever they happen to land. */
   .composer-overlay .composer-actions {
     margin-top: auto;
+    row-gap: 12px;
+    padding-top: 12px;
   }
-  .composer-tags .tag-input,
-  .composer-date,
-  .composer-schedule,
-  .composer-blocked-event {
-    font-size: 14px;
+  .composer-overlay .composer-date {
+    background: var(--bg-subtle);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .composer-overlay .composer-buttons {
+    flex: 1 0 100%;
+  }
+  .composer-overlay .composer-buttons .btn-sm {
+    flex: 1;
   }
   .btn-sm {
     min-height: 40px;
